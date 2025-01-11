@@ -1,31 +1,143 @@
-Netdata collects metrics per second and presents them in beautiful low-latency dashboards. It is designed to run on all of your physical and virtual servers, cloud deployments, Kubernetes clusters, and edge/IoT devices, to monitor your systems, containers, and applications.
+# Checklist
+## Dynamic compose for netdata
+This is a netdata update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://netdata.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/config:/etc/netdata
+- [ ] ${APP_DATA_DIR}/data/lib:/var/lib/netdata
+- [ ] ${APP_DATA_DIR}/data/cache:/var/cache/netdata
+- [ ] /etc/passwd:/host/etc/passwd:ro
+- [ ] /etc/group:/host/etc/group:ro
+- [ ] /proc:/host/proc:ro
+- [ ] /sys:/host/sys:ro
+- [ ] /etc/os-release:/host/etc/os-release:ro
+- [ ] /var/run/docker.sock:/var/run/docker.sock:ro
+##### Specific instructions :
+- [ ] 🔢 PID (host)
+- [ ] 🔓 Capacity add
+- [ ] Security options 🔐
 
-It scales nicely from just a single server to thousands of servers, even in complex multi/mixed/hybrid cloud environments, and given enough disk space it can keep your metrics for years.
-
-**KEY FEATURES**:<br/>
-
-- 💥 **Collects metrics from 800+ integrations**<br/>
-  Operating system metrics, container metrics, virtual machines, hardware sensors, applications metrics, OpenMetrics exporters, StatsD, and logs.
-  
-- 💪 **Real-Time, Low-Latency, High-Resolution**<br/>
-  All metrics are collected per second and are on the dashboard immediately after data collection. Netdata is designed to be fast.
-
-- 😶‍🌫️ **Unsupervised Anomaly Detection**<br/>
-  Trains multiple Machine-Learning (ML) models for each metric collected and detects anomalies based on the past behavior of each metric individually.
-
-- 🔥 **Powerful Visualization**<br/>
-  Clear and precise visualization that allows you to quickly understand any dataset, but also to filter, slice and dice the data directly on the dashboard, without the need to learn any query language.
-
-- 🔔 **Out of box Alerts**<br/>
-  Comes with hundreds of alerts out of the box to detect common issues and pitfalls, revealing issues that can easily go unnoticed. It supports several notification methods to let you know when your attention is needed.
-
-- 📖 **systemd Journal Logs Explorer** (beta, in the nightly release channel)<br/>
-  Provides a `systemd` journal logs explorer, to view, filter and analyze system and applications logs by directly accessing `systemd` journal files on individual hosts and infrastructure-wide logs centralization servers.
-
-- 😎 **Low Maintenance**<br/>
-  Fully automated in every aspect: automated dashboards, out-of-the-box alerts, auto-detection and auto-discovery of metrics, zero-touch machine-learning, easy scalability and high availability, and CI/CD friendly.
-
-- ⭐ **Open and Extensible**<br/>
-  Netdata is a modular platform that can be extended in all possible ways and it also integrates nicely with other monitoring solutions.
-
----
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "netdata",
+      "image": "netdata/netdata:v2.1.1",
+      "isMain": true,
+      "internalPort": 19999,
+      "pid": "host",
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/config",
+          "containerPath": "/etc/netdata"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/lib",
+          "containerPath": "/var/lib/netdata"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/cache",
+          "containerPath": "/var/cache/netdata"
+        },
+        {
+          "hostPath": "/etc/passwd",
+          "containerPath": "/host/etc/passwd",
+          "readOnly": true
+        },
+        {
+          "hostPath": "/etc/group",
+          "containerPath": "/host/etc/group",
+          "readOnly": true
+        },
+        {
+          "hostPath": "/proc",
+          "containerPath": "/host/proc",
+          "readOnly": true
+        },
+        {
+          "hostPath": "/sys",
+          "containerPath": "/host/sys",
+          "readOnly": true
+        },
+        {
+          "hostPath": "/etc/os-release",
+          "containerPath": "/host/etc/os-release",
+          "readOnly": true
+        },
+        {
+          "hostPath": "/var/run/docker.sock",
+          "containerPath": "/var/run/docker.sock",
+          "readOnly": true
+        }
+      ],
+      "capAdd": [
+        "SYS_PTRACE",
+        "SYS_ADMIN"
+      ],
+      "securityOpt": [
+        "apparmor:unconfined"
+      ]
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.7'
+services:
+  netdata:
+    image: netdata/netdata:v2.1.1
+    container_name: netdata
+    pid: host
+    restart: unless-stopped
+    cap_add:
+    - SYS_PTRACE
+    - SYS_ADMIN
+    security_opt:
+    - apparmor:unconfined
+    ports:
+    - ${APP_PORT}:19999
+    volumes:
+    - ${APP_DATA_DIR}/data/config:/etc/netdata
+    - ${APP_DATA_DIR}/data/lib:/var/lib/netdata
+    - ${APP_DATA_DIR}/data/cache:/var/cache/netdata
+    - /etc/passwd:/host/etc/passwd:ro
+    - /etc/group:/host/etc/group:ro
+    - /proc:/host/proc:ro
+    - /sys:/host/sys:ro
+    - /etc/os-release:/host/etc/os-release:ro
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.netdata-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.netdata.loadbalancer.server.port: 19999
+      traefik.http.routers.netdata-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.netdata-insecure.entrypoints: web
+      traefik.http.routers.netdata-insecure.service: netdata
+      traefik.http.routers.netdata-insecure.middlewares: netdata-web-redirect
+      traefik.http.routers.netdata.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.netdata.entrypoints: websecure
+      traefik.http.routers.netdata.service: netdata
+      traefik.http.routers.netdata.tls.certresolver: myresolver
+      traefik.http.routers.netdata-local-insecure.rule: Host(`netdata.${LOCAL_DOMAIN}`)
+      traefik.http.routers.netdata-local-insecure.entrypoints: web
+      traefik.http.routers.netdata-local-insecure.service: netdata
+      traefik.http.routers.netdata-local-insecure.middlewares: netdata-web-redirect
+      traefik.http.routers.netdata-local.rule: Host(`netdata.${LOCAL_DOMAIN}`)
+      traefik.http.routers.netdata-local.entrypoints: websecure
+      traefik.http.routers.netdata-local.service: netdata
+      traefik.http.routers.netdata-local.tls: true
+      runtipi.managed: true
+ 
+```
