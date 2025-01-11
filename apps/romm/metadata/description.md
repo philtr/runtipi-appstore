@@ -1,107 +1,155 @@
-# Overview
+# Checklist
+## Dynamic compose for romm
+This is a romm update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://romm.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${ROOT_FOLDER_HOST}/media/data/roms:/romm/library
+- [ ] ${APP_DATA_DIR}/data/redis:/redis-data
+- [ ] ${APP_DATA_DIR}/data/romm-resources:/romm/resources
+- [ ] ${APP_DATA_DIR}/data/config:/romm/config
+- [ ] ${APP_DATA_DIR}/data/assets:/romm/assets
+- [ ] ${APP_DATA_DIR}/data/mysql/config:/config
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 🔗 Depends on
 
-RomM (ROM Manager) allows you to scan, enrich, and browse your game collection with a clean and responsive interface. With support for multiple platforms, various naming schemes, and custom tags, RomM is a must-have for anyone who plays on emulators.
-
-## Features
-
-- Scans your existing games library and enhances it with metadata from IGDB and MobyGames
-- Supports a large number of **platforms**
-- Play games directly from the browser using EmulatorJS
-- Share your library with friends while limiting access and permissions
-- Supports MAME, Nintendo Switch, and Sony Playstation naming schemes
-- Detects and groups **multifile games** (e.g. PS1 games with multiple CDs)
-- Can parse tags in filenames (e.g. (E), (USA), (rev v1), etc.)
-- View, upload, update, and delete games from any modern web browser
-
-## Folder Structure
-
-As mentioned in the installation section, RomM requires a specific folder structure. The two supported structures are as follows:
-
-<table border="0">
- <tr>
-    <th style="text-align: center"><b>Structure A (recommended)</b></tthd>
-    <th style="text-align: center"><b>Structure B (fallback)</b></th>
- </tr>
- <tr>
-  <td>
-    <code>library/roms/gbc/rom_1.gbc</code>
-  </td>
-  <td>
-    <code>library/gbc/roms/rom_1.gbc</code>
-  </td>
- </tr>
- <tr>
-    <td>
-      <pre>
-        library/
-        ├─ roms/
-        │  ├─ gbc/
-        │  │  ├─ rom_1.gbc
-        │  │  ├─ rom_2.gbc
-        │  │
-        │  ├─ gba/
-        │  │  ├─ rom_1.gba
-        │  │  ├─ rom_2.gba
-        │  │
-        │  ├─ ps/
-        │     ├─ my_multifile_game/
-        │     │   ├─ my_game_cd1.iso
-        │     │   ├─ my_game_cd2.iso
-        │     │
-        │     ├─ rom_1.iso
-        ├─ bios/
-        │  ├─ gba/
-        │  │  ├─ gba_bios.bin
-        │  │
-        │  ├─ ps/
-        │     ├─ scph1001.bin
-        |     ├─ scph5501.bin
-        |     ├─ scph5502.bin
-      </pre>
-    </td>
-    <td>
-      <pre>
-        library/
-        ├─ gbc/
-        │  ├─ roms/
-        │     ├─ rom_1.gbc
-        │     ├─ rom_2.gbc
-        │
-        ├─ gba/
-        │  ├─ roms/
-        │     ├─ rom_1.gba
-        │     ├─ rom_2.gba
-        |  ├─ bios/
-        |     ├─ gba_bios.bin
-        │
-        ├─ ps/
-        │  ├─ roms/
-        │     ├─ my_multifile_game/
-        │     │  ├─ my_game_cd1.iso
-        │     │  ├─ my_game_cd2.iso
-        │     │
-        │     ├─ rom_1.iso
-        |  ├─ bios/
-        |     ├─ scph1001.bin
-        |     ├─ scph5501.bin
-        |     ├─ scph5502.bin
-      </pre>
-    </td>
- </tr>
-</table>
-
-> For folder naming conventions, review the Platform Supportplatform-support section. To override default system names in the folder structure (if your directories are named differently), see the Configuration File section.
-
-## Configuration File
-
-RomM's "understanding" of your library can be configured with a `config.yaml` file or through the `config` tab in the `Control Panel` under the `Settings` section. Refer to the example config.yml file for guidance on how to configure it and the example docker-compose.yml file on how to mount it into the container.
-
-## Scheduler
-
-The scheduler allows you to schedule async tasks that run in the Redis container at regular intervals. Jobs can be run at a specific time in the future, after a time delta, or at recurring internals using cron notation. The wiki page on the scheduler has more information on which tasks are available and how to enable them.
-
-## Platform Support
-
-If you adhere to the RomM folder structure, RomM supports all platforms listed on the Supported Platforms page. **The folder is case-sensitive and must be used exactly as it appears on the list.** When scanning your library, RomM will use the folder name to determine the platform and fetch the appropriate game information, metadata, and cover art.
-
-Additionally, some of these platforms have custom icons available..
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "romm",
+      "image": "ghcr.io/rommapp/romm:3.7.0",
+      "isMain": true,
+      "internalPort": 8080,
+      "environment": {
+        "DB_HOST": "romm-db",
+        "DB_NAME": "romm",
+        "DB_USER": "tipi",
+        "DB_PASSWD": "${ROMM_MYSQL_PASSWORD}",
+        "ROMM_AUTH_SECRET_KEY": "${ROMM_AUTH_SECRET_KEY}",
+        "IGDB_CLIENT_ID": "${ROMM_IGDB_CLIENT_ID}",
+        "IGDB_CLIENT_SECRET": "${ROMM_IGDB_CLIENT_SECRET}",
+        "MOBYGAMES_API_KEY": "${ROMM_MOBYGAMES_API_KEY}",
+        "STEAMGRIDDB_API_KEY": "${ROMM_STEAMGRIDDB_API_KEY}"
+      },
+      "dependsOn": [
+        "romm-db"
+      ],
+      "volumes": [
+        {
+          "hostPath": "${ROOT_FOLDER_HOST}/media/data/roms",
+          "containerPath": "/romm/library"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/redis",
+          "containerPath": "/redis-data"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/romm-resources",
+          "containerPath": "/romm/resources"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/config",
+          "containerPath": "/romm/config"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/assets",
+          "containerPath": "/romm/assets"
+        }
+      ]
+    },
+    {
+      "name": "romm-db",
+      "image": "lscr.io/linuxserver/mariadb:10.11.10",
+      "environment": {
+        "MYSQL_ROOT_PASSWORD": "${ROMM_MYSQL_ROOT_PASSWORD}",
+        "MYSQL_DATABASE": "romm",
+        "MYSQL_USER": "tipi",
+        "MYSQL_PASSWORD": "${ROMM_MYSQL_PASSWORD}"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/mysql/config",
+          "containerPath": "/config"
+        }
+      ]
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+services:
+  romm:
+    image: ghcr.io/rommapp/romm:3.7.0
+    container_name: romm
+    environment:
+    - DB_HOST=romm-db
+    - DB_NAME=romm
+    - DB_USER=tipi
+    - DB_PASSWD=${ROMM_MYSQL_PASSWORD}
+    - ROMM_AUTH_SECRET_KEY=${ROMM_AUTH_SECRET_KEY}
+    - IGDB_CLIENT_ID=${ROMM_IGDB_CLIENT_ID}
+    - IGDB_CLIENT_SECRET=${ROMM_IGDB_CLIENT_SECRET}
+    - MOBYGAMES_API_KEY=${ROMM_MOBYGAMES_API_KEY}
+    - STEAMGRIDDB_API_KEY=${ROMM_STEAMGRIDDB_API_KEY}
+    restart: unless-stopped
+    volumes:
+    - ${ROOT_FOLDER_HOST}/media/data/roms:/romm/library
+    - ${APP_DATA_DIR}/data/redis:/redis-data
+    - ${APP_DATA_DIR}/data/romm-resources:/romm/resources
+    - ${APP_DATA_DIR}/data/config:/romm/config
+    - ${APP_DATA_DIR}/data/assets:/romm/assets
+    ports:
+    - ${APP_PORT}:8080
+    depends_on:
+    - romm-db
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.romm-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.romm.loadbalancer.server.port: 8080
+      traefik.http.routers.romm-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.romm-insecure.entrypoints: web
+      traefik.http.routers.romm-insecure.service: romm
+      traefik.http.routers.romm-insecure.middlewares: romm-web-redirect
+      traefik.http.routers.romm.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.romm.entrypoints: websecure
+      traefik.http.routers.romm.service: romm
+      traefik.http.routers.romm.tls.certresolver: myresolver
+      traefik.http.routers.romm-local-insecure.rule: Host(`romm.${LOCAL_DOMAIN}`)
+      traefik.http.routers.romm-local-insecure.entrypoints: web
+      traefik.http.routers.romm-local-insecure.service: romm
+      traefik.http.routers.romm-local-insecure.middlewares: romm-web-redirect
+      traefik.http.routers.romm-local.rule: Host(`romm.${LOCAL_DOMAIN}`)
+      traefik.http.routers.romm-local.entrypoints: websecure
+      traefik.http.routers.romm-local.service: romm
+      traefik.http.routers.romm-local.tls: true
+      runtipi.managed: true
+  romm-db:
+    image: lscr.io/linuxserver/mariadb:10.11.10
+    container_name: romm-db
+    environment:
+    - MYSQL_ROOT_PASSWORD=${ROMM_MYSQL_ROOT_PASSWORD}
+    - MYSQL_DATABASE=romm
+    - MYSQL_USER=tipi
+    - MYSQL_PASSWORD=${ROMM_MYSQL_PASSWORD}
+    volumes:
+    - ${APP_DATA_DIR}/data/mysql/config:/config
+    restart: unless-stopped
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+ 
+```
