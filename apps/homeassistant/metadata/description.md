@@ -1,31 +1,52 @@
-## Open source home automation that puts local control and privacy first
+# Checklist
+## Dynamic compose for homeassistant
+This is a homeassistant update for using dynamic compose.
+##### Reaching the app :
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/config:/config
+##### Specific instructions :
+- [ ] 🌐 Network mode (host)
+- [ ] 👑 Privileged
 
-Open source home automation that puts local control and privacy first. Powered by a worldwide community of tinkerers and DIY enthusiasts. Perfect to run on a Raspberry Pi or a local server.
-Check out [home-assistant.io](https://home-assistant.io) for a [demo](https://home-assistant.io/demo/), installation [instructions](https://home-assistant.io/getting-started/), [tutorials](https://home-assistant.io/getting-started/automation/) and [documentation](https://home-assistant.io/docs/)
-
-![Screenshot](https://raw.githubusercontent.com/home-assistant/core/master/docs/screenshots.png)
-
-## Migration
-
-February 2024
-
-This version of Home Assistant can not be exposed. To migrate to the exposable app, follow these steps:
-
-- stop the installed app
-- rename `runtipi/app-data/homeassistant` to `runtipi/app-data/__homeassistant`
-- make a backup of `runtipi/app-data/__homeassistant` to a safe location
-- uninstall the app
-- install the new Home Assistant from the App Store
-- stop the app
-- remove `runtipi/app-data/homeassistant-1`
-- rename `runtipi/app-data/__homeassistant` to `runtipi/app-data/homeassistant-1`
-- add the following section to `runtipi/app-data/homeassistant/data/config/configuration.yaml`
-  ```
-  http:
-    use_x_forwarded_for: true
-    trusted_proxies:
-      - 127.0.0.1
-      - 172.16.0.0/12
-      - ::1
-  ```
-- start the app
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "homeassistant",
+      "image": "ghcr.io/home-assistant/home-assistant:stable",
+      "isMain": true,
+      "networkMode": "host",
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/config",
+          "containerPath": "/config"
+        }
+      ],
+      "privileged": true
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3'
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: ghcr.io/home-assistant/home-assistant:stable
+    volumes:
+    - ${APP_DATA_DIR}/config:/config
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    labels:
+      runtipi.managed: true
+ 
+```
