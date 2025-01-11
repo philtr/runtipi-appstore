@@ -1,37 +1,86 @@
-# Postfix Mail Relay
+# Checklist
+## Dynamic compose for postfix-relay
+This is a postfix-relay update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://postfix-relay.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/config:/root/config:rw
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 🩺 Healthcheck
 
-Simple SMTP relay, originally based on [alterrebe/docker-mail-relay](https://github.com/alterrebe/docker-mail-relay), but has been rewritten since.
-
-## Description
-
-The container provides a simple SMTP relay for environments like Amazon VPC where you may have private servers with no Internet connection
-and therefore with no access to external mail relays (e.g. Amazon SES, SendGrid and others). You need to supply the container with your
-external mail relay address and credentials. The image is tested with `Amazon SES`, `Sendgrid`, `Gmail` and `Mandrill`
-
-## Changes since `alterrebe/docker-mail-relay`
-
-* Uses `alpine` image instead of `ubuntu`.
-* Uses `envsubst` for templating instead of `j2cli`.
-* All output goes to `stdout` and `stderr` including `maillog`.
-* Included `superviserd` event watcher which will exit the `supervisord` process if one of the monitored processes dies unexpectedly.
-* Doesn't use TLS on `smtpd` side.
-* And other changes to make the image as **KISS** as possible
-
-## Changed in version `1.3.0`
-
-* Remove `rsyslog` dependancy
-* Remove `supervisor`
-* Even more **KISS**, just single script used to configure and run `postfix`
-
-## Environment variables
-
-| ENV. Variable            | Description                                                                                                                        |
-| ------------------------ | -----------------------------------------------------------------------------------------------------------------------------------|
-| `ACCEPTED_NETWORKS`      | Space delimited list of networks to accept mail from. Default: `192.168.0.0/16 172.16.0.0/12 10.0.0.0/8`                     |
-| `RECIPIENT_RESTRICTIONS` | Space delimited list of allowed `RCPT TO` addresses. Default: **unrestricted**                                               |
-| `SMTP_HOST`              | External relay DNS name. Default: `email-smtp.us-east-1.amazonaws.com`                                                       |
-| `SMTP_LOGIN`             | Login to connect to the external relay. **Required**                                                                         |
-| `SMTP_PASSWORD`          | Password to connect to the external relay. **Required**                                                                      |
-| `SMTP_PORT`              | External relay TCP port. Default: `25`                                                                                       |
-| `TLS_VERIFY`             | Trust level for checking remote side cert. Default: `may` (<http://www.postfix.org/postconf.5.html#smtp_tls_security_level>) |
-| `USE_TLS`                | Remote require tls. Must be `yes` or `no`. Default: `no`                                                                     |
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "postfix-relay",
+      "image": "simenduev/postfix-relay:1.4.0",
+      "isMain": true,
+      "internalPort": 25,
+      "environment": {
+        "ACCEPTED_NETWORKS": "${RELAY_ACCEPTED_NETWORKS}",
+        "SMTP_HOST": "${RELAY_SMTP_HOST}",
+        "SMTP_LOGIN": "${RELAY_SMTP_LOGIN}",
+        "SMTP_PASSWORD": "${RELAY_SMTP_PASSWORD}",
+        "SMTP_PORT": "${RELAY_SMTP_PORT}",
+        "TLS_VERIFY": "${RELAY_TLS_VERIFY}",
+        "USE_TLS": "${RELAY_USE_TLS}"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/config",
+          "containerPath": "/root/config"
+        }
+      ],
+      "healthCheck": {
+        "interval": "10s",
+        "timeout": "5s",
+        "retries": 5,
+        "startPeriod": "30s",
+        "test": "netstat -an | grep 25 > /dev/null; if [ 0 != $? ]; then exit 1; fi;"
+      }
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.8'
+services:
+  postfix-relay:
+    container_name: postfix-relay
+    image: simenduev/postfix-relay:1.4.0
+    restart: unless-stopped
+    ports:
+    - ${APP_PORT}:25
+    volumes:
+    - ${APP_DATA_DIR}/data/config:/root/config:rw
+    environment:
+    - ACCEPTED_NETWORKS=${RELAY_ACCEPTED_NETWORKS}
+    - SMTP_HOST=${RELAY_SMTP_HOST}
+    - SMTP_LOGIN=${RELAY_SMTP_LOGIN}
+    - SMTP_PASSWORD=${RELAY_SMTP_PASSWORD}
+    - SMTP_PORT=${RELAY_SMTP_PORT}
+    - TLS_VERIFY=${RELAY_TLS_VERIFY}
+    - USE_TLS=${RELAY_USE_TLS}
+    healthcheck:
+      test: netstat -an | grep 25 > /dev/null; if [ 0 != $? ]; then exit 1; fi;
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: false
+      runtipi.managed: true
+ 
+```
