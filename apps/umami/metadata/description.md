@@ -1,12 +1,109 @@
-## Default credentials
+# Checklist
+## Dynamic compose for umami
+This is a umami update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://umami.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 🔗 Depends on
 
-Username: admin
-Password: umami
-
-# umami
-
-Umami is a simple, fast, privacy-focused alternative to Google Analytics.
-
-## [](https://github.com/umami-software/umami/blob/master/README.md#getting-started)Getting started
-
-A detailed getting started guide can be found at [https://umami.is/docs/](https://umami.is/docs/)
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "umami",
+      "image": "ghcr.io/umami-software/umami:postgresql-v1.40.0",
+      "isMain": true,
+      "internalPort": 3000,
+      "environment": {
+        "DATABASE_URL": "postgresql://umami:${DB_PASSWORD}@umami-db:5432/umami",
+        "DATABASE_TYPE": "postgresql",
+        "HASH_SALT": "${HASH_SALT}"
+      },
+      "dependsOn": [
+        "umami-db"
+      ]
+    },
+    {
+      "name": "umami-db",
+      "image": "postgres:12-alpine",
+      "environment": {
+        "POSTGRES_DB": "umami",
+        "POSTGRES_USER": "umami",
+        "POSTGRES_PASSWORD": "${DB_PASSWORD}"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/postgres",
+          "containerPath": "/var/lib/postgresql/data"
+        }
+      ]
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.7'
+services:
+  umami:
+    container_name: umami
+    image: ghcr.io/umami-software/umami:postgresql-v1.40.0
+    ports:
+    - ${APP_PORT}:3000
+    environment:
+      DATABASE_URL: postgresql://umami:${DB_PASSWORD}@umami-db:5432/umami
+      DATABASE_TYPE: postgresql
+      HASH_SALT: ${HASH_SALT}
+    depends_on:
+    - umami-db
+    restart: unless-stopped
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.umami-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.umami.loadbalancer.server.port: 3000
+      traefik.http.routers.umami-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.umami-insecure.entrypoints: web
+      traefik.http.routers.umami-insecure.service: umami
+      traefik.http.routers.umami-insecure.middlewares: umami-web-redirect
+      traefik.http.routers.umami.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.umami.entrypoints: websecure
+      traefik.http.routers.umami.service: umami
+      traefik.http.routers.umami.tls.certresolver: myresolver
+      traefik.http.routers.umami-local-insecure.rule: Host(`umami.${LOCAL_DOMAIN}`)
+      traefik.http.routers.umami-local-insecure.entrypoints: web
+      traefik.http.routers.umami-local-insecure.service: umami
+      traefik.http.routers.umami-local-insecure.middlewares: umami-web-redirect
+      traefik.http.routers.umami-local.rule: Host(`umami.${LOCAL_DOMAIN}`)
+      traefik.http.routers.umami-local.entrypoints: websecure
+      traefik.http.routers.umami-local.service: umami
+      traefik.http.routers.umami-local.tls: true
+      runtipi.managed: true
+  umami-db:
+    container_name: umami-db
+    image: postgres:12-alpine
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+    - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+ 
+```
