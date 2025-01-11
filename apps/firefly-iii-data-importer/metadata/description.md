@@ -1,32 +1,86 @@
-# Firefly III Data Importer
-"Firefly III" is a (self-hosted) manager for your personal finances. It can help you keep track of your expenses and income, so you can spend less and save more. The **data importer** is built to help you import transactions into Firefly III. It is separated from Firefly III for security and maintenance reasons.
+# Checklist
+## Dynamic compose for firefly-iii-data-importer
+This is a firefly-iii-data-importer update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://firefly-iii-data-importer.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Specific instructions :
+- [ ] 🌳 Environment
 
-The data importer does not connect to your bank directly. Instead, it uses [Nordigen](https://nordigen.com/en/coverage/) and [SaltEdge](https://www.saltedge.com/products/spectre/countries) to connect to over 6000 banks worldwide. These services are free for Firefly III users, but require registration. Keep in mind these services have their own privacy and data usage policies.
-
-The data importer can import CSV files you've downloaded from your bank.
-
-You can run the data importer once, for a bulk import. You can also run it regularly to keep up with new transactions.
-
-Eager to get started? Go to [the documentation](https://docs.firefly-iii.org/data-importer)!
-
-## Features
-
-* Import from over 6000 banks
-* Import over the command line for easy automation
-* Import over an API for easy automation
-* Use rules and data mapping for transaction clarity
-
-Many more features are listed in the [documentation](https://docs.firefly-iii.org/data-importer).
-
-## Who's it for?
-
-This application is for people who want to track their finances, keep an eye on their money **without having to upload their financial records to the cloud**. You're a bit tech-savvy, you like open source software, and you don't mind tinkering with (self-hosted) servers.
-
-## Need help?
-
-If you need support using Firefly III or the associated tools, come find us!
-
-- [GitHub Discussions for questions and support](https://github.com/firefly-iii/firefly-iii/discussions/)
-- [Gitter.im for a good chat and a quick answer](https://gitter.im/firefly-iii/firefly-iii)
-- [GitHub Issues for bugs and issues](https://github.com/firefly-iii/firefly-iii/issues)
-- [Follow me around for news and updates on Mastodon](https://fosstodon.org/@ff3)
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "firefly-iii-data-importer",
+      "image": "fireflyiii/data-importer:version-1.5.6",
+      "isMain": true,
+      "internalPort": 8080,
+      "environment": {
+        "FIREFLY_III_URL": "${FIREFLY_III_URL}",
+        "FIREFLY_III_ACCESS_TOKEN": "${FIREFLY_III_ACCESS_TOKEN}",
+        "FIREFLY_III_CLIENT_ID": "${FIREFLY_III_CLIENT_ID}",
+        "TZ": "${TZ}",
+        "TRUSTED_PROXIES": "**",
+        "VERIFY_TLS_SECURITY": "false",
+        "APP_ENV": "local",
+        "APP_DEBUG": "false",
+        "LOG_CHANNEL": "stack",
+        "LOG_LEVEL": "info"
+      }
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.9'
+services:
+  firefly-iii-data-importer:
+    image: fireflyiii/data-importer:version-1.5.6
+    container_name: firefly-iii-data-importer
+    restart: unless-stopped
+    ports:
+    - ${APP_PORT}:8080
+    environment:
+    - FIREFLY_III_URL=${FIREFLY_III_URL}
+    - FIREFLY_III_ACCESS_TOKEN=${FIREFLY_III_ACCESS_TOKEN}
+    - FIREFLY_III_CLIENT_ID=${FIREFLY_III_CLIENT_ID}
+    - TZ=${TZ}
+    - TRUSTED_PROXIES=**
+    - VERIFY_TLS_SECURITY=false
+    - APP_ENV=local
+    - APP_DEBUG=false
+    - LOG_CHANNEL=stack
+    - LOG_LEVEL=info
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.firefly-iii-importer-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.firefly-iii-importer.loadbalancer.server.port: 8080
+      traefik.http.routers.firefly-iii-importer-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.firefly-iii-importer-insecure.entrypoints: web
+      traefik.http.routers.firefly-iii-importer-insecure.service: firefly-iii-importer
+      traefik.http.routers.firefly-iii-importer-insecure.middlewares: firefly-iii-importer-web-redirect
+      traefik.http.routers.firefly-iii-importer.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.firefly-iii-importer.entrypoints: websecure
+      traefik.http.routers.firefly-iii-importer.service: firefly-iii-importer
+      traefik.http.routers.firefly-iii-importer.tls.certresolver: myresolver
+      traefik.http.routers.firefly-iii-importer-local-insecure.rule: Host(`firefly-iii-data-importer.${LOCAL_DOMAIN}`)
+      traefik.http.routers.firefly-iii-importer-local-insecure.entrypoints: web
+      traefik.http.routers.firefly-iii-importer-local-insecure.service: firefly-iii-importer
+      traefik.http.routers.firefly-iii-importer-local-insecure.middlewares: firefly-iii-importer-web-redirect
+      traefik.http.routers.firefly-iii-importer-local.rule: Host(`firefly-iii-data-importer.${LOCAL_DOMAIN}`)
+      traefik.http.routers.firefly-iii-importer-local.entrypoints: websecure
+      traefik.http.routers.firefly-iii-importer-local.service: firefly-iii-importer
+      traefik.http.routers.firefly-iii-importer-local.tls: true
+      runtipi.managed: true
+ 
+```
