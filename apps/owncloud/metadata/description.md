@@ -1,46 +1,221 @@
-# ownCloud Core
+# Checklist
+## Dynamic compose for owncloud
+This is a owncloud update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://owncloud.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/owncloud:/mnt/data
+- [ ] ${APP_DATA_DIR}/data/mysql:/var/lib/mysql
+- [ ] ${APP_DATA_DIR}/data/redis:/data
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 🩺 Healthcheck
+- [ ] 🔗 Depends on
+- [ ] ⌨ Command
 
-**[ownCloud](http://ownCloud.com) gives you freedom and control over your own data. A personal cloud which runs on your own server.**
-
-[![](https://github.com/owncloud/screenshots/raw/master/files/sidebar_1.png)](https://github.com/owncloud/screenshots/blob/master/files/sidebar_1.png)
-
-## [](https://github.com/owncloud/core/blob/master/README.md#why-is-this-so-awesome)Why Is This so Awesome?
-
-- 📁 **Access your Data** You can store your files, contacts, calendars and more on a server of your choosing.
-- 📦 **Sync your Data** You keep your files, contacts, calendars and more synchronized amongst your devices.
-- 🔄 **Share your Data** You share your data with others, and give them access to your latest photo galleries, your calendar or anything else you want them to see.
-- 🚀 **Expandable with dozens of Apps** ...like Calendar, Contacts, Mail or News.
-- ☁️ **All Benefits of the Cloud** ...on your own Server.
-- 🔒 **Encryption** You can encrypt data in transit with secure https connections. You can enable the encryption app to encrypt data on storage for improved security and privacy.
-- ...
-
-## [](https://github.com/owncloud/core/blob/master/README.md#installation-instructions)Installation Instructions
-
-For installing ownCloud, see the official [ownCloud 10](https://doc.owncloud.com/server/latest/admin_manual/installation/) installation manual.
-
-## [](https://github.com/owncloud/core/blob/master/README.md#development-build-prerequisites)Development Build Prerequisites
-
-Note that when doing a local development build, you need to have **Composer v2** installed. If your OS provides a lower version than v2, you can install Composer v2 manually. As an example, which may be valid for other releases/distros too, see [How to install Composer on Ubuntu 22.04 | 20.04 LTS](https://www.how2shout.com/linux/how-to-install-composer-on-ubuntu-22-04-20-04-lts/).
-
-You also must have installed `yarn` and `node` (v14 or higher).
-
-## [](https://github.com/owncloud/core/blob/master/README.md#contribution-guidelines)Contribution Guidelines
-
-[https://owncloud.com/contribute/](https://owncloud.com/contribute/)
-
-## [](https://github.com/owncloud/core/blob/master/README.md#support)Support
-
-Learn about the different ways you can get support for ownCloud: [https://owncloud.com/support/](https://owncloud.com/support/)
-
-## [](https://github.com/owncloud/core/blob/master/README.md#get-in-touch)Get in Touch
-
-- 📋 [Forum](https://central.owncloud.org)
-- #️⃣ [IRC channel](https://web.libera.chat/?channels=#owncloud)
-- 👥 [Facebook](https://facebook.com/ownclouders)
-- 🐣 [Twitter](https://twitter.com/ownCloud)
-
-## [](https://github.com/owncloud/core/blob/master/README.md#important-notice-on-translations)Important Notice on Translations
-
-Please submit translations via Transifex: [https://explore.transifex.com/owncloud-org/](https://explore.transifex.com/owncloud-org/)
-
-See the detailed information about [translations](https://doc.owncloud.com/server/latest/developer_manual/core/translation.html) here.
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "owncloud",
+      "image": "owncloud/server:10.15.0",
+      "isMain": true,
+      "internalPort": 8080,
+      "environment": {
+        "OWNCLOUD_DOMAIN": "${APP_DOMAIN}",
+        "OWNCLOUD_TRUSTED_DOMAINS": "${APP_DOMAIN}",
+        "OWNCLOUD_DB_TYPE": "mysql",
+        "OWNCLOUD_DB_NAME": "owncloud",
+        "OWNCLOUD_DB_USERNAME": "tipi",
+        "OWNCLOUD_DB_PASSWORD": "${OWNCLOUD_DB_PASSWORD}",
+        "OWNCLOUD_DB_HOST": "owncloud-db",
+        "OWNCLOUD_ADMIN_USERNAME": "${OWNCLOUD_USERNAME}",
+        "OWNCLOUD_ADMIN_PASSWORD": "${OWNCLOUD_PASSWORD}",
+        "OWNCLOUD_MYSQL_UTF8MB4": "true",
+        "OWNCLOUD_REDIS_ENABLED": "true",
+        "OWNCLOUD_REDIS_HOST": "owncloud-redis"
+      },
+      "dependsOn": [
+        "owncloud-db",
+        "owncloud-redis"
+      ],
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/owncloud",
+          "containerPath": "/mnt/data"
+        }
+      ],
+      "healthCheck": {
+        "interval": "30s",
+        "timeout": "10s",
+        "retries": 5,
+        "test": "/usr/bin/healthcheck"
+      }
+    },
+    {
+      "name": "owncloud-db",
+      "image": "mariadb:10.6",
+      "environment": {
+        "MYSQL_ROOT_PASSWORD": "${OWNCLOUD_DB_PASSWORD}",
+        "MYSQL_USER": "tipi",
+        "MYSQL_PASSWORD": "${OWNCLOUD_DB_PASSWORD}",
+        "MYSQL_DATABASE": "owncloud"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/mysql",
+          "containerPath": "/var/lib/mysql"
+        }
+      ],
+      "command": [
+        "--max-allowed-packet=128M",
+        "--innodb-log-file-size=64M"
+      ],
+      "healthCheck": {
+        "interval": "10s",
+        "timeout": "5s",
+        "retries": 5,
+        "test": "mysqladmin ping -u root --password=${OWNCLOUD_DB_PASSWORD}"
+      }
+    },
+    {
+      "name": "owncloud-redis",
+      "image": "redis:6",
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/redis",
+          "containerPath": "/data"
+        }
+      ],
+      "command": [
+        "--databases",
+        "1"
+      ],
+      "healthCheck": {
+        "interval": "10s",
+        "timeout": "5s",
+        "retries": 5,
+        "test": "redis-cli ping"
+      }
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3'
+services:
+  owncloud:
+    image: owncloud/server:10.15.0
+    container_name: owncloud
+    restart: unless-stopped
+    ports:
+    - ${APP_PORT}:8080
+    depends_on:
+    - owncloud-db
+    - owncloud-redis
+    environment:
+    - OWNCLOUD_DOMAIN=${APP_DOMAIN}
+    - OWNCLOUD_TRUSTED_DOMAINS=${APP_DOMAIN}
+    - OWNCLOUD_DB_TYPE=mysql
+    - OWNCLOUD_DB_NAME=owncloud
+    - OWNCLOUD_DB_USERNAME=tipi
+    - OWNCLOUD_DB_PASSWORD=${OWNCLOUD_DB_PASSWORD}
+    - OWNCLOUD_DB_HOST=owncloud-db
+    - OWNCLOUD_ADMIN_USERNAME=${OWNCLOUD_USERNAME}
+    - OWNCLOUD_ADMIN_PASSWORD=${OWNCLOUD_PASSWORD}
+    - OWNCLOUD_MYSQL_UTF8MB4=true
+    - OWNCLOUD_REDIS_ENABLED=true
+    - OWNCLOUD_REDIS_HOST=owncloud-redis
+    healthcheck:
+      test:
+      - CMD
+      - /usr/bin/healthcheck
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+    - ${APP_DATA_DIR}/data/owncloud:/mnt/data
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.owncloud-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.owncloud.loadbalancer.server.port: 8080
+      traefik.http.routers.owncloud-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.owncloud-insecure.entrypoints: web
+      traefik.http.routers.owncloud-insecure.service: owncloud
+      traefik.http.routers.owncloud-insecure.middlewares: owncloud-web-redirect
+      traefik.http.routers.owncloud.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.owncloud.entrypoints: websecure
+      traefik.http.routers.owncloud.service: owncloud
+      traefik.http.routers.owncloud.tls.certresolver: myresolver
+      traefik.http.routers.owncloud-local-insecure.rule: Host(`owncloud.${LOCAL_DOMAIN}`)
+      traefik.http.routers.owncloud-local-insecure.entrypoints: web
+      traefik.http.routers.owncloud-local-insecure.service: owncloud
+      traefik.http.routers.owncloud-local-insecure.middlewares: owncloud-web-redirect
+      traefik.http.routers.owncloud-local.rule: Host(`owncloud.${LOCAL_DOMAIN}`)
+      traefik.http.routers.owncloud-local.entrypoints: websecure
+      traefik.http.routers.owncloud-local.service: owncloud
+      traefik.http.routers.owncloud-local.tls: true
+      runtipi.managed: true
+  owncloud-db:
+    image: mariadb:10.6
+    container_name: owncloud-db
+    restart: unless-stopped
+    environment:
+    - MYSQL_ROOT_PASSWORD=${OWNCLOUD_DB_PASSWORD}
+    - MYSQL_USER=tipi
+    - MYSQL_PASSWORD=${OWNCLOUD_DB_PASSWORD}
+    - MYSQL_DATABASE=owncloud
+    command:
+    - --max-allowed-packet=128M
+    - --innodb-log-file-size=64M
+    healthcheck:
+      test:
+      - CMD
+      - mysqladmin
+      - ping
+      - -u
+      - root
+      - --password=${OWNCLOUD_DB_PASSWORD}
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+    - ${APP_DATA_DIR}/data/mysql:/var/lib/mysql
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+  owncloud-redis:
+    image: redis:6
+    container_name: owncloud-redis
+    restart: unless-stopped
+    command:
+    - --databases
+    - '1'
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+    - ${APP_DATA_DIR}/data/redis:/data
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+ 
+```
