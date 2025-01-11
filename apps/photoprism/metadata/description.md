@@ -1,9 +1,178 @@
-## AI-Powered Photos App for the Decentralized Web 🌈💎✨ 
+# Checklist
+## Dynamic compose for photoprism
+This is a photoprism update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://photoprism.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${ROOT_FOLDER_HOST}/media/data/images:/photoprism/originals
+- [ ] ${APP_DATA_DIR}/data/photoprism/storage:/photoprism/storage
+- [ ] ${APP_DATA_DIR}/data/mariadb:/var/lib/mysql
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 🔗 Depends on
+- [ ] 📂 Working dir (/photoprism)
+- [ ] ⌨ Command
 
-- **username**: admin
-<br />
-
-PhotoPrism® is an AI-Powered Photos App for the Decentralized Web. It makes use of the latest technologies to tag and find pictures automatically without getting in your way. You can run it at home, on a private server, or in the cloud.
-To get a first impression, you are welcome to play with our [public demo](https://try.photoprism.app/). Be careful not to upload any private pictures.
-
-![Screenshot](https://camo.githubusercontent.com/5e03a87e47aad26ad7248b8b43eac6471fe96f7b655ac2e532697692753c3ff8/68747470733a2f2f646c2e70686f746f707269736d2e6170702f696d672f75692f6465736b746f702d3130303070782e6a7067)
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "photoprism",
+      "image": "photoprism/photoprism:240420",
+      "isMain": true,
+      "internalPort": 2342,
+      "environment": {
+        "PHOTOPRISM_ADMIN_PASSWORD": "${PHOTOPRISM_ADMIN_PASSWORD}",
+        "PHOTOPRISM_SITE_URL": "${APP_PROTOCOL:-http}://${APP_DOMAIN}/",
+        "PHOTOPRISM_ORIGINALS_LIMIT": 5000,
+        "PHOTOPRISM_HTTP_COMPRESSION": "gzip",
+        "PHOTOPRISM_LOG_LEVEL": "info",
+        "PHOTOPRISM_PUBLIC": "false",
+        "PHOTOPRISM_READONLY": "false",
+        "PHOTOPRISM_EXPERIMENTAL": "false",
+        "PHOTOPRISM_DISABLE_CHOWN": "false",
+        "PHOTOPRISM_DISABLE_WEBDAV": "false",
+        "PHOTOPRISM_DISABLE_SETTINGS": "false",
+        "PHOTOPRISM_DISABLE_TENSORFLOW": "false",
+        "PHOTOPRISM_DISABLE_FACES": "false",
+        "PHOTOPRISM_DISABLE_CLASSIFICATION": "false",
+        "PHOTOPRISM_DISABLE_RAW": "false",
+        "PHOTOPRISM_RAW_PRESETS": "false",
+        "PHOTOPRISM_JPEG_QUALITY": 85,
+        "PHOTOPRISM_DETECT_NSFW": "false",
+        "PHOTOPRISM_UPLOAD_NSFW": "true",
+        "PHOTOPRISM_DATABASE_DRIVER": "mysql",
+        "PHOTOPRISM_DATABASE_SERVER": "photoprism-db:3306",
+        "PHOTOPRISM_DATABASE_NAME": "photoprism",
+        "PHOTOPRISM_DATABASE_USER": "photoprism",
+        "PHOTOPRISM_DATABASE_PASSWORD": "${DB_PASSWORD}",
+        "PHOTOPRISM_SITE_CAPTION": "AI-Powered Photos App"
+      },
+      "dependsOn": [
+        "photoprism-db"
+      ],
+      "volumes": [
+        {
+          "hostPath": "${ROOT_FOLDER_HOST}/media/data/images",
+          "containerPath": "/photoprism/originals"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/photoprism/storage",
+          "containerPath": "/photoprism/storage"
+        }
+      ],
+      "workingDir": "/photoprism"
+    },
+    {
+      "name": "photoprism-db",
+      "image": "mariadb:10.8",
+      "environment": {
+        "MARIADB_DATABASE": "photoprism",
+        "MARIADB_USER": "photoprism",
+        "MARIADB_PASSWORD": "${DB_PASSWORD}",
+        "MARIADB_ROOT_PASSWORD": "${DB_ROOT_PASSWORD}"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/mariadb",
+          "containerPath": "/var/lib/mysql"
+        }
+      ],
+      "command": "mysqld --innodb-buffer-pool-size=128M --transaction-isolation=READ-COMMITTED --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=512 --innodb-rollback-on-timeout=OFF --innodb-lock-wait-timeout=120"
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.7'
+services:
+  photoprism:
+    image: photoprism/photoprism:240420
+    container_name: photoprism
+    depends_on:
+    - photoprism-db
+    restart: unless-stopped
+    ports:
+    - ${APP_PORT}:2342
+    environment:
+      PHOTOPRISM_ADMIN_PASSWORD: ${PHOTOPRISM_ADMIN_PASSWORD}
+      PHOTOPRISM_SITE_URL: ${APP_PROTOCOL:-http}://${APP_DOMAIN}/
+      PHOTOPRISM_ORIGINALS_LIMIT: 5000
+      PHOTOPRISM_HTTP_COMPRESSION: gzip
+      PHOTOPRISM_LOG_LEVEL: info
+      PHOTOPRISM_PUBLIC: 'false'
+      PHOTOPRISM_READONLY: 'false'
+      PHOTOPRISM_EXPERIMENTAL: 'false'
+      PHOTOPRISM_DISABLE_CHOWN: 'false'
+      PHOTOPRISM_DISABLE_WEBDAV: 'false'
+      PHOTOPRISM_DISABLE_SETTINGS: 'false'
+      PHOTOPRISM_DISABLE_TENSORFLOW: 'false'
+      PHOTOPRISM_DISABLE_FACES: 'false'
+      PHOTOPRISM_DISABLE_CLASSIFICATION: 'false'
+      PHOTOPRISM_DISABLE_RAW: 'false'
+      PHOTOPRISM_RAW_PRESETS: 'false'
+      PHOTOPRISM_JPEG_QUALITY: 85
+      PHOTOPRISM_DETECT_NSFW: 'false'
+      PHOTOPRISM_UPLOAD_NSFW: 'true'
+      PHOTOPRISM_DATABASE_DRIVER: mysql
+      PHOTOPRISM_DATABASE_SERVER: photoprism-db:3306
+      PHOTOPRISM_DATABASE_NAME: photoprism
+      PHOTOPRISM_DATABASE_USER: photoprism
+      PHOTOPRISM_DATABASE_PASSWORD: ${DB_PASSWORD}
+      PHOTOPRISM_SITE_CAPTION: AI-Powered Photos App
+    working_dir: /photoprism
+    volumes:
+    - ${ROOT_FOLDER_HOST}/media/data/images:/photoprism/originals
+    - ${APP_DATA_DIR}/data/photoprism/storage:/photoprism/storage
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.photoprism-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.photoprism.loadbalancer.server.port: 2342
+      traefik.http.routers.photoprism-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.photoprism-insecure.entrypoints: web
+      traefik.http.routers.photoprism-insecure.service: photoprism
+      traefik.http.routers.photoprism-insecure.middlewares: photoprism-web-redirect
+      traefik.http.routers.photoprism.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.photoprism.entrypoints: websecure
+      traefik.http.routers.photoprism.service: photoprism
+      traefik.http.routers.photoprism.tls.certresolver: myresolver
+      traefik.http.routers.photoprism-local-insecure.rule: Host(`photoprism.${LOCAL_DOMAIN}`)
+      traefik.http.routers.photoprism-local-insecure.entrypoints: web
+      traefik.http.routers.photoprism-local-insecure.service: photoprism
+      traefik.http.routers.photoprism-local-insecure.middlewares: photoprism-web-redirect
+      traefik.http.routers.photoprism-local.rule: Host(`photoprism.${LOCAL_DOMAIN}`)
+      traefik.http.routers.photoprism-local.entrypoints: websecure
+      traefik.http.routers.photoprism-local.service: photoprism
+      traefik.http.routers.photoprism-local.tls: true
+      runtipi.managed: true
+  photoprism-db:
+    restart: unless-stopped
+    image: mariadb:10.8
+    container_name: photoprism-db
+    command: mysqld --innodb-buffer-pool-size=128M --transaction-isolation=READ-COMMITTED
+      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=512
+      --innodb-rollback-on-timeout=OFF --innodb-lock-wait-timeout=120
+    volumes:
+    - ${APP_DATA_DIR}/data/mariadb:/var/lib/mysql
+    environment:
+      MARIADB_DATABASE: photoprism
+      MARIADB_USER: photoprism
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+ 
+```
