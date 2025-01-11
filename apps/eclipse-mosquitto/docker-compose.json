@@ -1,0 +1,54 @@
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "eclipse-mosquitto",
+      "image": "eclipse-mosquitto:2.0.20",
+      "isMain": true,
+      "addPorts": [
+        {
+          "hostPort": 1883,
+          "containerPort": 1883
+        }
+      ],
+      "expose": [1883],
+      "environment": {
+        "TZ": "${TZ}",
+        "MQTT_DYNSEC_ADMIN_USER": "admin",
+        "MQTT_DYNSEC_ADMIN_PASSWORD": "${MQTT_ADMIN_PASSWORD}"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/data",
+          "containerPath": "/mosquitto/data"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/config",
+          "containerPath": "/mosquitto/config"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/scripts/dynsec-setup.sh",
+          "containerPath": "/dynsec-setup.sh"
+        }
+      ],
+      "command": ["/dynsec-setup.sh", "/usr/sbin/mosquitto", "-c", "/mosquitto/config/mosquitto.conf"]
+    },
+    {
+      "name": "mosquitto-management-center",
+      "image": "cedalo/management-center:2",
+      "internalPort": 8088,
+      "expose": [8088],
+      "environment": {
+        "TZ": "${TZ}",
+        "CEDALO_MC_BROKER_ID": "mosquitto-broker",
+        "CEDALO_MC_BROKER_NAME": "mosquitto-broker-2",
+        "CEDALO_MC_BROKER_URL": "mqtt://${INTERNAL_IP}:1883",
+        "CEDALO_MC_BROKER_USERNAME": "admin",
+        "CEDALO_MC_BROKER_PASSWORD": "${MQTT_ADMIN_PASSWORD}",
+        "CEDALO_MC_USERNAME": "admin",
+        "CEDALO_MC_PASSWORD": "${CEDALO_MC_PASSWORD}"
+      },
+      "dependsOn": ["eclipse-mosquitto"]
+    }
+  ]
+}
