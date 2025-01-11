@@ -1,70 +1,214 @@
-<h1 align="center">
-  <a href="https://movary.org"><img src="https://github.com/leepeuker/movary/raw/main/public/images/movary-logo-192x192.png" height="160px" width="160px"></a>
-  <br>
-  Movary
-  <br>
-</h1>
+# Checklist
+## Dynamic compose for movary
+This is a movary update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://movary.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/movary:/app/storage
+- [ ] ${APP_DATA_DIR}/data/movary:/app/storage
+- [ ] ${APP_DATA_DIR}/data/mysql:/var/lib/mysql
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 👤 User (1000:1000)
+- [ ] 🔗 Depends on
+- [ ] ⌨ Command
+- [ ] 🩺 Healthcheck
 
-<h4 align="center">The central hub to track, rate and explore your movie watch history</h4>
-
-<p align="center">
-<a href="https://hub.docker.com/r/leepeuker/movary" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/docker/pulls/leepeuker/movary" ></a>
-<a href="https://github.com/leepeuker/movary" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/github/stars/leepeuker/movary?style=flat&color=yellow&label=github%20stars" ></a>
-<a href="https://github.com/leepeuker/movary/issues" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/github/issues/leepeuker/movary?color=eba434&label=github%20issues" ></a>
-<a href="https://discord.gg/KbcSqggrgW" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/discord/1125830398715363399" ></a>
-<a href="https://github.com/leepeuker/movary/blob/main/LICENSE" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/github/license/leepeuker/movary" ></a>
-</p>
-
-<p align="center">
-<a href="https://movary.org" target="_blank" rel="noopener noreferrer">Website</a> •
-<a href="https://docs.movary.org/install/docker/" target="_blank" rel="noopener noreferrer">Installation</a> •
-<a href="https://docs.movary.org/" target="_blank" rel="noopener noreferrer">Docs</a> •
-<a href="https://api.movary.org/" target="_blank" rel="noopener noreferrer">Api</a> •
-<a href="https://demo.movary.org/" target="_blank" rel="noopener noreferrer">Demo</a>
-</p>
-
-Movary is a free and open source web application to track, rate and explore your movie watch history.
-You can host it for yourself and others.
-It offers detailed statistics, 
-third-party integrations for importing and exporting your history from platforms like Trakt, Letterboxd, or Netflix,
-automated play tracking for Plex, Jellyfin or Emby and much [more](#features).
-
-![Movary Dashboard Example](https://raw.githubusercontent.com/leepeuker/movary/main/docs/images/dashboard-screenshot.png)
-
-
-**Disclaimer:** This project is still in an experimental (but usable) state.
-There are plans to add more and improve existing features before creating the 1.0 Release,
-which can lead to sudden breaking changes from time to time, so keep the release notes in mind when updating until then.
-
-## Features
-
-- Movie watch history: Collect and manage your watch history and ratings
-- Statistics: Analyze your movie watching behavior and history, like e.g. most watched actors/directors/genres/languages/years
-- Customization: You decide how your dashboard should look like, what format to use when displaying dates and more
-- Third party integrations: Import and export your history and ratings from/to platforms like Trakt, Letterboxd, or Netflix
-- Scrobbler: Automatically add new plays and ratings from Plex, Jellyfin or Emby
-- Own your personal data: Users can decide who can see their data and export/import/delete the data and their accounts at any time
-- Locally stored metadata: Using e.g. themoviedb.org and imdb as sources, all metadata movary uses for your history entries can be stored locally
-- PWA: Can be installed as a smartphone app ([How to install PWAs in chrome](https://support.google.com/chrome/answer/9658361?hl=en&co=GENIE.Platform%3DAndroid&oco=1))
-- User-management: Use Movary alone or with others
-- Completely free, no ads, no tracking and open source! :)
-
-## Demo
-
-A demo installation can be found [here](https://demo.movary.org/) (User: `testUser@movary.org` Password:`testUser`).
-
-## Documentation
-
-The documentation for the latest release is located [here](https://docs.movary.org). Please report missing or wrong information.
-
-## Support
-
-- Please report bugs and request features/changes via [Github issues](https://github.com/leepeuker/movary/issues/new/choose)
-- Ask for help or discuss related topics via [Github discussions](https://github.com/leepeuker/movary/discussions)
-- Join our [Discord server](https://discord.gg/KbcSqggrgW)
-
-## Contributors
-
-* [@leepeuker](https://github.com/leepeuker) as Lee Peuker
-* [@JVT038](https://github.com/JVT038) as JVT038
-* [@pbogre](https://github.com/pbogre) as Pietro Bonaldo Gregori
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "movary",
+      "image": "leepeuker/movary:0.62.2",
+      "isMain": true,
+      "internalPort": 80,
+      "user": "1000:1000",
+      "environment": {
+        "TMDB_API_KEY": "${MOVARY_TMDB_API_KEY}",
+        "TIMEZONE": "${TZ}",
+        "DATABASE_MODE": "mysql",
+        "DATABASE_MYSQL_HOST": "movary-db",
+        "DATABASE_MYSQL_NAME": "movary",
+        "DATABASE_MYSQL_USER": "tipi",
+        "DATABASE_MYSQL_PASSWORD": "${MOVARY_MYSQL_PASSWORD}",
+        "TMDB_ENABLE_IMAGE_CACHING": "1",
+        "APPLICATION_URL": "${APP_PROTOCOL:-http}://${APP_DOMAIN}",
+        "PLEX_IDENTIFIER": "${MOVARY_PLEX_IDENTIFIER}",
+        "JELLYFIN_DEVICE_ID": "${MOVARY_JELLYFIN_IDENTIFIER}"
+      },
+      "dependsOn": {
+        "movary-db": {
+          "condition": "service_healthy"
+        }
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/movary",
+          "containerPath": "/app/storage"
+        }
+      ]
+    },
+    {
+      "name": "movary-migration",
+      "image": "leepeuker/movary:0.62.2",
+      "user": "1000:1000",
+      "environment": {
+        "TMDB_API_KEY": "${MOVARY_TMDB_API_KEY}",
+        "TIMEZONE": "${TZ}",
+        "DATABASE_MODE": "mysql",
+        "DATABASE_MYSQL_HOST": "movary-db",
+        "DATABASE_MYSQL_NAME": "movary",
+        "DATABASE_MYSQL_USER": "tipi",
+        "DATABASE_MYSQL_PASSWORD": "${MOVARY_MYSQL_PASSWORD}",
+        "TMDB_ENABLE_IMAGE_CACHING": "1",
+        "APPLICATION_URL": "${APP_PROTOCOL:-http}://${APP_DOMAIN}",
+        "PLEX_IDENTIFIER": "${MOVARY_PLEX_IDENTIFIER}",
+        "JELLYFIN_DEVICE_ID": "${MOVARY_JELLYFIN_IDENTIFIER}"
+      },
+      "dependsOn": {
+        "movary-db": {
+          "condition": "service_healthy"
+        }
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/movary",
+          "containerPath": "/app/storage"
+        }
+      ],
+      "command": "php bin/console.php database:migration:migrate"
+    },
+    {
+      "name": "movary-db",
+      "image": "mysql:8.0",
+      "environment": {
+        "MYSQL_DATABASE": "movary",
+        "MYSQL_USER": "tipi",
+        "MYSQL_PASSWORD": "${MOVARY_MYSQL_PASSWORD}",
+        "MYSQL_ROOT_PASSWORD": "${MOVARY_MYSQL_PASSWORD}"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/mysql",
+          "containerPath": "/var/lib/mysql"
+        }
+      ],
+      "healthCheck": {
+        "timeout": "20s",
+        "retries": 10,
+        "test": "mysqladmin ping -h localhost"
+      }
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3'
+services:
+  movary:
+    image: leepeuker/movary:0.62.2
+    container_name: movary
+    environment:
+    - TMDB_API_KEY=${MOVARY_TMDB_API_KEY}
+    - TIMEZONE=${TZ}
+    - DATABASE_MODE=mysql
+    - DATABASE_MYSQL_HOST=movary-db
+    - DATABASE_MYSQL_NAME=movary
+    - DATABASE_MYSQL_USER=tipi
+    - DATABASE_MYSQL_PASSWORD=${MOVARY_MYSQL_PASSWORD}
+    - TMDB_ENABLE_IMAGE_CACHING=1
+    - APPLICATION_URL=${APP_PROTOCOL:-http}://${APP_DOMAIN}
+    - PLEX_IDENTIFIER=${MOVARY_PLEX_IDENTIFIER}
+    - JELLYFIN_DEVICE_ID=${MOVARY_JELLYFIN_IDENTIFIER}
+    user: 1000:1000
+    restart: unless-stopped
+    volumes:
+    - ${APP_DATA_DIR}/data/movary:/app/storage
+    ports:
+    - ${APP_PORT}:80
+    depends_on:
+      movary-db:
+        condition: service_healthy
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.movary-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.movary.loadbalancer.server.port: 80
+      traefik.http.routers.movary-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.movary-insecure.entrypoints: web
+      traefik.http.routers.movary-insecure.service: movary
+      traefik.http.routers.movary-insecure.middlewares: movary-web-redirect
+      traefik.http.routers.movary.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.movary.entrypoints: websecure
+      traefik.http.routers.movary.service: movary
+      traefik.http.routers.movary.tls.certresolver: myresolver
+      traefik.http.routers.movary-local-insecure.rule: Host(`movary.${LOCAL_DOMAIN}`)
+      traefik.http.routers.movary-local-insecure.entrypoints: web
+      traefik.http.routers.movary-local-insecure.service: movary
+      traefik.http.routers.movary-local-insecure.middlewares: movary-web-redirect
+      traefik.http.routers.movary-local.rule: Host(`movary.${LOCAL_DOMAIN}`)
+      traefik.http.routers.movary-local.entrypoints: websecure
+      traefik.http.routers.movary-local.service: movary
+      traefik.http.routers.movary-local.tls: true
+      runtipi.managed: true
+  movary-migration:
+    image: leepeuker/movary:0.62.2
+    container_name: movary-migration
+    command: php bin/console.php database:migration:migrate
+    environment:
+    - TMDB_API_KEY=${MOVARY_TMDB_API_KEY}
+    - TIMEZONE=${TZ}
+    - DATABASE_MODE=mysql
+    - DATABASE_MYSQL_HOST=movary-db
+    - DATABASE_MYSQL_NAME=movary
+    - DATABASE_MYSQL_USER=tipi
+    - DATABASE_MYSQL_PASSWORD=${MOVARY_MYSQL_PASSWORD}
+    - TMDB_ENABLE_IMAGE_CACHING=1
+    - APPLICATION_URL=${APP_PROTOCOL:-http}://${APP_DOMAIN}
+    - PLEX_IDENTIFIER=${MOVARY_PLEX_IDENTIFIER}
+    - JELLYFIN_DEVICE_ID=${MOVARY_JELLYFIN_IDENTIFIER}
+    user: 1000:1000
+    volumes:
+    - ${APP_DATA_DIR}/data/movary:/app/storage
+    depends_on:
+      movary-db:
+        condition: service_healthy
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+  movary-db:
+    image: mysql:8.0
+    container_name: movary-db
+    environment:
+      MYSQL_DATABASE: movary
+      MYSQL_USER: tipi
+      MYSQL_PASSWORD: ${MOVARY_MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MOVARY_MYSQL_PASSWORD}
+    volumes:
+    - ${APP_DATA_DIR}/data/mysql:/var/lib/mysql
+    networks:
+    - tipi_main_network
+    healthcheck:
+      test:
+      - CMD
+      - mysqladmin
+      - ping
+      - -h
+      - localhost
+      timeout: 20s
+      retries: 10
+    labels:
+      runtipi.managed: true
+ 
+```
