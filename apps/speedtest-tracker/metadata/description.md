@@ -1,50 +1,147 @@
-# Speedtest Tracker
+# Checklist
+## Dynamic compose for speedtest-tracker
+This is a speedtest-tracker update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://speedtest-tracker.tipi.local
+- [ ] Additionnal Port(s)
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/speedtest-tracker/config:/config
+- [ ] ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 🔗 Depends on
 
-Speedtest Tracker is a self-hosted internet performance tracking application that runs speedtest checks against Ookla's Speedtest service.
-
-## About
-
-![v0.20.6 Speedtest Tracker Dashboard](https://F3367574858-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2Fvtb3s6TB12XY9iIx8YyJ%4Fuploads%2Fgit-blob-2896fa80b8d3f90cc8c4c495b8b9793af5f62244%2Fimage%20(2).png?alt=media&width=768&dpr=4&quality=100&sign=d549885e&sv=1)
-
-A self-hosted app to check your internet speed using Ookla's Speedtest service and track its history. Built using Laravel and the Speedtest CLI.
-
-The main use case for Speedtest Tracker is to build a history of your internet's performance so that you can be informed when you're not receiving your ISP's advertised rates.
-
-_...also some of us just like a lot of data._
-
-These docs are up-to-date for version: `v0.21.2`
-
-## Configuration
-
-### Authentication
-
-Speedtest Tracker uses Filament for the admin panel. During the install process an admin account is created for you.
-
-Default User Account
-| Username | Password |
-| --- | --- |
-| `admin@example.com`| `password` |
-
----
-
-### SPEEDTEST_TRACKER_DB_PASSWORD
-
-This is the password for the PostgreSQL database used by Speedtest Tracker. It's automatically generated and should be a secure, random string of at least 32 characters.
-
-### SPEEDTEST_APP_KEY
-
-This is the application key used by Laravel for encryption and other security features. You can retrieve one at the [Speedtest Tracker](https://speedtest-tracker.dev) site.
-
-### SPEEDTEST_SCHEDULE (cron format)
-
-This field allows you to set the schedule for running speed tests. It uses cron syntax. The default value is `30 * * * *`, which runs a test every 30 minutes. You can adjust this to your preferred frequency. [Crontab Guru](https://crontab.guru) is a good resource.
-
-### SPEEDTEST_SERVERS (comma-separated IDs)
-
-Specify Speedtest servers to use for your tests. Enter one or more server IDs, separated by commas. To find server IDs, you can use the following method:
-
-1. Open your web browser and navigate to [Speedtest.net's Servers page](https://www.speedtest.net/speedtest-servers.php)
-2. This page will display a list of Speedtest servers along with their IDs, names, sponsors, and locations.
-3. Find the server(s) you want to use and note down their IDs.
-4. Enter these IDs in the Speedtest Servers field, separated by commas (e.g., "1234,5678,9012").
-
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "speedtest-tracker",
+      "image": "lscr.io/linuxserver/speedtest-tracker:1.0.3",
+      "isMain": true,
+      "internalPort": 80,
+      "addPorts": [
+        {
+          "hostPort": 8212,
+          "containerPort": 443
+        }
+      ],
+      "environment": {
+        "PUID": "1000",
+        "PGID": "1000",
+        "DB_CONNECTION": "pgsql",
+        "DB_HOST": "speedtest-tracker-db",
+        "DB_PORT": "5432",
+        "DB_DATABASE": "speedtest-tracker",
+        "DB_USERNAME": "tipi",
+        "DB_PASSWORD": "${SPEEDTEST_TRACKER_DB_PASSWORD}",
+        "SPEEDTEST_SCHEDULE": "${SPEEDTEST_SCHEDULE:-'30 * * * *'}",
+        "SPEEDTEST_SERVERS": "${SPEEDTEST_SERVERS:-''}",
+        "TZ": "${TZ}",
+        "APP_TIMEZONE": "${TZ}",
+        "DISPLAY_TIMEZONE": "${TZ}",
+        "APP_KEY": "${SPEEDTEST_APP_KEY}"
+      },
+      "dependsOn": [
+        "speedtest-tracker-db"
+      ],
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/speedtest-tracker/config",
+          "containerPath": "/config"
+        }
+      ]
+    },
+    {
+      "name": "speedtest-tracker-db",
+      "image": "postgres:15",
+      "environment": {
+        "POSTGRES_USER": "tipi",
+        "POSTGRES_PASSWORD": "${SPEEDTEST_TRACKER_DB_PASSWORD}",
+        "POSTGRES_DB": "speedtest-tracker"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/postgres",
+          "containerPath": "/var/lib/postgresql/data"
+        }
+      ]
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+services:
+  speedtest-tracker:
+    image: lscr.io/linuxserver/speedtest-tracker:1.0.3
+    container_name: speedtest-tracker
+    environment:
+    - PUID=1000
+    - PGID=1000
+    - DB_CONNECTION=pgsql
+    - DB_HOST=speedtest-tracker-db
+    - DB_PORT=5432
+    - DB_DATABASE=speedtest-tracker
+    - DB_USERNAME=tipi
+    - DB_PASSWORD=${SPEEDTEST_TRACKER_DB_PASSWORD}
+    - SPEEDTEST_SCHEDULE=${SPEEDTEST_SCHEDULE:-'30 * * * *'}
+    - SPEEDTEST_SERVERS=${SPEEDTEST_SERVERS:-''}
+    - TZ=${TZ}
+    - APP_TIMEZONE=${TZ}
+    - DISPLAY_TIMEZONE=${TZ}
+    - APP_KEY=${SPEEDTEST_APP_KEY}
+    restart: unless-stopped
+    volumes:
+    - ${APP_DATA_DIR}/data/speedtest-tracker/config:/config
+    ports:
+    - ${APP_PORT}:80
+    - 8212:443
+    depends_on:
+    - speedtest-tracker-db
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.speedtest-tracker-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.speedtest-tracker.loadbalancer.server.port: 80
+      traefik.http.routers.speedtest-tracker-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.speedtest-tracker-insecure.entrypoints: web
+      traefik.http.routers.speedtest-tracker-insecure.service: speedtest-tracker
+      traefik.http.routers.speedtest-tracker-insecure.middlewares: speedtest-tracker-web-redirect
+      traefik.http.routers.speedtest-tracker.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.speedtest-tracker.entrypoints: websecure
+      traefik.http.routers.speedtest-tracker.service: speedtest-tracker
+      traefik.http.routers.speedtest-tracker.tls.certresolver: myresolver
+      traefik.http.routers.speedtest-tracker-local-insecure.rule: Host(`speedtest-tracker.${LOCAL_DOMAIN}`)
+      traefik.http.routers.speedtest-tracker-local-insecure.entrypoints: web
+      traefik.http.routers.speedtest-tracker-local-insecure.service: speedtest-tracker
+      traefik.http.routers.speedtest-tracker-local-insecure.middlewares: speedtest-tracker-web-redirect
+      traefik.http.routers.speedtest-tracker-local.rule: Host(`speedtest-tracker.${LOCAL_DOMAIN}`)
+      traefik.http.routers.speedtest-tracker-local.entrypoints: websecure
+      traefik.http.routers.speedtest-tracker-local.service: speedtest-tracker
+      traefik.http.routers.speedtest-tracker-local.tls: true
+      runtipi.managed: true
+  speedtest-tracker-db:
+    container_name: speedtest-tracker-db
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+    - POSTGRES_USER=tipi
+    - POSTGRES_PASSWORD=${SPEEDTEST_TRACKER_DB_PASSWORD}
+    - POSTGRES_DB=speedtest-tracker
+    volumes:
+    - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+ 
+```
