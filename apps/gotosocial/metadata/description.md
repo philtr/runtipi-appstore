@@ -1,58 +1,145 @@
-# Installation Docs
+# Checklist
+## Dynamic compose for gotosocial
+This is a gotosocial update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://gotosocial.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/gotosocial:/gotosocial/storage
+- [ ] ${APP_DATA_DIR}/data/db:/var/lib/postgresql/data
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 👤 User (1000:1000)
+- [ ] 🔗 Depends on
 
-### To Create your user 
-1. SSH into your Tipi Server
-2. Fill in your credentials (some_username,someone@example.org, some_very_good_password), then run the command: 
-    ``` 
-    docker exec -it gotosocial /gotosocial/gotosocial admin account create --username some_username --email someone@example.org --password 'some_very_good_password' 
-    ```
-### To promote the initial user (or any user) to admin:
-1. SSH into your Tipi Server
-2. Fill in your credentials (some_username), then run the command: 
-    ```
-    docker exec -it gotosocial /gotosocial/gotosocial admin account promote --username some_username 
-    ```
-3. Go Back To your WebUI, Stop and Start your instance.
-4. Go to yourdomain.com/settings and you will be able to see personal and instance settings!
-
-### (Optional) S3 Bucket
-
-If you would rather store your data within a S3 Bucket, here is an easy way to do it.
-
-1. Follow the [App User Config Guide](https://www.runtipi.io/docs/guides/customize-app-config) to make a folder and app.env.
-2. In the docker-compose.yml you can set the S3 Config Like
-
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "gotosocial",
+      "image": "superseriousbusiness/gotosocial:0.17.3",
+      "isMain": true,
+      "internalPort": 8080,
+      "user": "1000:1000",
+      "environment": {
+        "GTS_HOST": "${APP_DOMAIN}",
+        "GTS_LETSENCRYPT_ENABLED": "false",
+        "GTS_DB_TYPE": "postgres",
+        "GTS_DB_ADDRESS": "gotosocial-db",
+        "GTS_DB_PORT": "5432",
+        "GTS_DB_USER": "tipi",
+        "GTS_DB_PASSWORD": "${GTS_DB_PASSWORD}",
+        "GTS_DB_DATABASE": "gotosocial-db",
+        "GTS_ACCOUNTS_REGISTRATION_OPEN": "${GTS_ACCOUNTS_REGISTRATION_OPEN}",
+        "GTS_SMTP_HOST": "${GTS_SMTP_HOST}",
+        "GTS_SMTP_PORT": "${GTS_SMTP_PORT}",
+        "GTS_SMTP_USERNAME": "${GTS_SMTP_USERNAME}",
+        "GTS_SMTP_PASSWORD": "${GTS_SMTP_PASSWORD}",
+        "GTS_SMTP_FROM": "${GTS_SMTP_FROM}"
+      },
+      "dependsOn": [
+        "gotosocial-db"
+      ],
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/gotosocial",
+          "containerPath": "/gotosocial/storage"
+        }
+      ]
+    },
+    {
+      "name": "gotosocial-db",
+      "image": "postgres:14",
+      "environment": {
+        "POSTGRES_PASSWORD": "${GTS_DB_PASSWORD}",
+        "POSTGRES_USER": "tipi",
+        "POSTGRES_DB": "gotosocial-db",
+        "PG_DATA": "/var/lib/postgresql/data"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/db",
+          "containerPath": "/var/lib/postgresql/data"
+        }
+      ]
+    }
+  ]
+} 
 ```
-version: "3"
+# Original YAML
+```yaml
+version: '3'
 services:
   gotosocial:
+    container_name: gotosocial
+    image: superseriousbusiness/gotosocial:0.17.3
+    user: 1000:1000
+    ports:
+    - ${APP_PORT}:8080
+    volumes:
+    - ${APP_DATA_DIR}/data/gotosocial:/gotosocial/storage
+    depends_on:
+    - gotosocial-db
     environment:
-      - GTS_STORAGE_BACKEND=s3
-      - GTS_STORAGE_S3_ENDPOINT=your_endpoint
-      - GTS_STORAGE_S3_USE_SSL=true
-      - GTS_STORAGE_S3_ACCESS_KEY=your_access_key
-      - GTS_STORAGE_S3_SECRET_KEY=your_secret_key
-      - GTS_STORAGE_S3_BUCKET=your_bucket
+    - GTS_HOST=${APP_DOMAIN}
+    - GTS_LETSENCRYPT_ENABLED=false
+    - GTS_DB_TYPE=postgres
+    - GTS_DB_ADDRESS=gotosocial-db
+    - GTS_DB_PORT=5432
+    - GTS_DB_USER=tipi
+    - GTS_DB_PASSWORD=${GTS_DB_PASSWORD}
+    - GTS_DB_DATABASE=gotosocial-db
+    - GTS_ACCOUNTS_REGISTRATION_OPEN=${GTS_ACCOUNTS_REGISTRATION_OPEN}
+    - GTS_SMTP_HOST=${GTS_SMTP_HOST}
+    - GTS_SMTP_PORT=${GTS_SMTP_PORT}
+    - GTS_SMTP_USERNAME=${GTS_SMTP_USERNAME}
+    - GTS_SMTP_PASSWORD=${GTS_SMTP_PASSWORD}
+    - GTS_SMTP_FROM=${GTS_SMTP_FROM}
+    restart: unless-stopped
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.gotosocial-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.gotosocial.loadbalancer.server.port: 8080
+      traefik.http.routers.gotosocial-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.gotosocial-insecure.entrypoints: web
+      traefik.http.routers.gotosocial-insecure.service: gotosocial
+      traefik.http.routers.gotosocial-insecure.middlewares: gotosocial-web-redirect
+      traefik.http.routers.gotosocial.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.gotosocial.entrypoints: websecure
+      traefik.http.routers.gotosocial.service: gotosocial
+      traefik.http.routers.gotosocial.tls.certresolver: myresolver
+      traefik.http.routers.gotosocial-local-insecure.rule: Host(`gotosocial.${LOCAL_DOMAIN}`)
+      traefik.http.routers.gotosocial-local-insecure.entrypoints: web
+      traefik.http.routers.gotosocial-local-insecure.service: gotosocial
+      traefik.http.routers.gotosocial-local-insecure.middlewares: gotosocial-web-redirect
+      traefik.http.routers.gotosocial-local.rule: Host(`gotosocial.${LOCAL_DOMAIN}`)
+      traefik.http.routers.gotosocial-local.entrypoints: websecure
+      traefik.http.routers.gotosocial-local.service: gotosocial
+      traefik.http.routers.gotosocial-local.tls: true
+      runtipi.managed: true
+  gotosocial-db:
+    container_name: gotosocial-db
+    image: postgres:14
+    environment:
+      POSTGRES_PASSWORD: ${GTS_DB_PASSWORD}
+      POSTGRES_USER: tipi
+      POSTGRES_DB: gotosocial-db
+      PG_DATA: /var/lib/postgresql/data
+    volumes:
+    - ${APP_DATA_DIR}/data/db:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+ 
 ```
-3. Restart your app, and your good to go!
-
-4. For More Info [Read the Docs!](https://docs.gotosocial.org/en/latest/configuration/storage/)
-
----
-# GoToSocial
-
-GoToSocial is an [ActivityPub](https://activitypub.rocks/) social network server, written in Golang.
-
-With GoToSocial, you can keep in touch with your friends, post, read, and share images and articles. All without being tracked or advertised to!
-
-[![](https://github.com/superseriousbusiness/gotosocial/raw/main/docs/assets/sloth.png)](https://github.com/superseriousbusiness/gotosocial/blob/main/docs/assets/sloth.png)
-
-**GoToSocial is still [ALPHA SOFTWARE](https://en.wikipedia.org/wiki/Software_release_life_cycle#Alpha)**. It is already deployable and useable, and it federates cleanly with many other Fediverse servers (not yet all). However, many things are not yet implemented, and there are plenty of bugs! We foresee entering beta somewhere in 2023.
-
-Documentation is at [docs.gotosocial.org](https://docs.gotosocial.org). You can skip straight to the API documentation [here](https://docs.gotosocial.org/en/latest/api/swagger/). To build from source, check the [CONTRIBUTING.md](https://github.com/superseriousbusiness/gotosocial/blob/main/CONTRIBUTING.md) file.
-
-Here's a screenshot of the instance landing page!
-
-[![Screenshot of the landing page for the GoToSocial instance goblin.technology. It shows basic information about the instance; number of users and posts etc.](https://github.com/superseriousbusiness/gotosocial/raw/main/docs/assets/instancesplash.png)](https://github.com/superseriousbusiness/gotosocial/blob/main/docs/assets/instancesplash.png)
-
-## [Read More!](https://github.com/superseriousbusiness/gotosocial#table-of-contents-)
