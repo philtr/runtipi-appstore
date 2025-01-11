@@ -1,23 +1,87 @@
-# Install Info
+# Checklist
+## Dynamic compose for scrypted
+This is a scrypted update for using dynamic compose.
+##### Reaching the app :
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/scrypted/database:/server/volume
+- [ ] ${ROOT_FOLDER_HOST}/media/data/NVR/scrypted:/nvr
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 🌐 Network mode (host)
+- [ ] 👑 Privileged
+- [ ] 📱 Devices
+- [ ] 📃 Logging
 
-When installing the NVR Plugin, you can set the NVR Storage path as `/nvr`. See below where that folder is mounted!
-## Folder Info
-
-| Root Folder                   | Container Folder |
-|-------------------------------|------------------|
-| /runtipi/app-data/nvr/data/scrypted/database |     /server/volume      |
-| /runtipi/media/data/NVR/scrypted        | /nvr       |
-
-# Scrypted
-
-Scrypted is a high performance home video integration platform and NVR with smart detections. [Instant, low latency, streaming](https://streamable.com/xbxn7z) to HomeKit, Google Home, and Alexa. Supports most cameras. [Learn more](https://docs.scrypted.app).
-
-[![](https://user-images.githubusercontent.com/73924/252752480-57e1d556-cd3d-4448-81f9-a6c51b6513de.png)](https://user-images.githubusercontent.com/73924/252752480-57e1d556-cd3d-4448-81f9-a6c51b6513de.png)
-
-## Installation and Documentation
-
-Installation and camera onboarding instructions can be found in the [docs](https://docs.scrypted.app).
-
-## Community
-
-Scrypted has active communities on [Discord](https://discord.gg/DcFzmBHYGq), [Reddit](https://reddit.com/r/scrypted), and [Github](https://github.com/koush/scrypted). Check them out if you have questions!
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "scrypted",
+      "image": "koush/scrypted:18-jammy-full.s6-v0.88.0",
+      "isMain": true,
+      "networkMode": "host",
+      "environment": {
+        "SCRYPTED_WEBHOOK_UPDATE_AUTHORIZATION": "${SCRYPTED_BEARER_TOKEN}",
+        "SCRYPTED_DOCKER_AVAHI": "false"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/scrypted/database",
+          "containerPath": "/server/volume"
+        },
+        {
+          "hostPath": "${ROOT_FOLDER_HOST}/media/data/NVR/scrypted",
+          "containerPath": "/nvr"
+        }
+      ],
+      "privileged": true,
+      "devices": [
+        "/dev/bus/usb:/dev/bus/usb",
+        "/dev/dri:/dev/dri"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "10"
+        }
+      }
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3'
+services:
+  scrypted:
+    container_name: scrypted
+    image: koush/scrypted:18-jammy-full.s6-v0.88.0
+    privileged: true
+    volumes:
+    - ${APP_DATA_DIR}/data/scrypted/database:/server/volume
+    - ${ROOT_FOLDER_HOST}/media/data/NVR/scrypted:/nvr
+    environment:
+    - SCRYPTED_WEBHOOK_UPDATE_AUTHORIZATION=${SCRYPTED_BEARER_TOKEN}
+    - SCRYPTED_DOCKER_AVAHI=false
+    devices:
+    - /dev/bus/usb:/dev/bus/usb
+    - /dev/dri:/dev/dri
+    restart: unless-stopped
+    network_mode: host
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '10'
+    labels:
+      runtipi.managed: true
+ 
+```
