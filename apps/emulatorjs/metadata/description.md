@@ -1,31 +1,92 @@
-Self-hosted **Javascript** emulation for various system.
+# Checklist
+## Dynamic compose for emulatorjs
+This is a emulatorjs update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://emulatorjs.tipi.local
+- [ ] Additionnal Port(s)
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/emulatorjs-config:/config
+- [ ] ${APP_DATA_DIR}/data/emulatorjs:/data
+##### Specific instructions :
+- [ ] 🌳 Environment
 
-The admin panel is accessible on port 8165.
-
-### [](https://github.com/EmulatorJS/EmulatorJS#extensions)Extensions
-
-**[GameLibrary](https://github.com/Ramaerel/emulatorjs-GameLibrary)**
-
-# [](https://github.com/EmulatorJS/EmulatorJS#supported-systems)Supported Systems
-
-### [](https://github.com/EmulatorJS/EmulatorJS#nintendo)Nintendo
-
-**[Game Boy Advance](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Nintendo%20Game%20Boy%20Advance.md)**   |  **[Famicom / NES](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/NES-Famicom.md)**   |  **[Virtual Boy](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Virtual%20Boy.md)**
-
-**[Game Boy](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Nintendo%20Game%20Boy.md)**   |  **[SNES](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/SNES.md)**   |  **[DS](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Nintendo%20DS.md)**   |  **[64](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Nintendo%2064.md)**
-
-### [](https://github.com/EmulatorJS/EmulatorJS#sega)Sega
-
-**[Master System](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Sega%20Master%20System.md)**   |  **[Mega Drive](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Sega%20Mega%20Drive.md)**   |  **[Game Gear](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Sega%20Game%20Gear.md)**
-
-**[Saturn](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Sega%20Saturn.md)**   |  **[32X](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Sega%2032X.md)**   |  **[CD](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Sega%20CD.md)**
-
-### [](https://github.com/EmulatorJS/EmulatorJS#atari)Atari
-
-**[2600](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Atari%202600.md)**   |  **[5200](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Atari%205200.md)**   |  **[7800](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Atari%207800.md)**   |  **[Lynx](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Atari%20Lynx.md)**   |  **[Jaguar](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Atari%20Jaguar.md)**
-
-### [](https://github.com/EmulatorJS/EmulatorJS#other)Other
-
-**[TurboGrafs 16 PC Engine](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/TurboGrafs%2016-PC%20Engine.md)**   |  **[WanderSwan Color](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/WanderSwan-Color.md)**   |  **[Neo Geo Poket](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Neo%20Geo%20Poket.md)**
-
-**[PlayStation](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/PlayStation.md)**   |  **[Arcade](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/Arcade.md)**   |  **[MSX](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/MSX.md)**   |  **[3DO](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/3DO.md)**   |  **[MAME 2003](https://github.com/EmulatorJS/EmulatorJS/blob/main/docs/Systems/MAME%202003.md)**
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "emulatorjs",
+      "image": "lscr.io/linuxserver/emulatorjs:1.9.2",
+      "isMain": true,
+      "internalPort": 80,
+      "addPorts": [
+        {
+          "hostPort": 8165,
+          "containerPort": 3000
+        }
+      ],
+      "environment": {
+        "TZ": "${TZ}"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/emulatorjs-config",
+          "containerPath": "/config"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/emulatorjs",
+          "containerPath": "/data"
+        }
+      ]
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.7'
+services:
+  emulatorjs:
+    container_name: emulatorjs
+    image: lscr.io/linuxserver/emulatorjs:1.9.2
+    ports:
+    - ${APP_PORT}:80
+    - 8165:3000
+    volumes:
+    - ${APP_DATA_DIR}/data/emulatorjs-config:/config
+    - ${APP_DATA_DIR}/data/emulatorjs:/data
+    environment:
+    - TZ=${TZ}
+    restart: unless-stopped
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.emulatorjs-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.emulatorjs.loadbalancer.server.port: 80
+      traefik.http.routers.emulatorjs-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.emulatorjs-insecure.entrypoints: web
+      traefik.http.routers.emulatorjs-insecure.service: emulatorjs
+      traefik.http.routers.emulatorjs-insecure.middlewares: emulatorjs-web-redirect
+      traefik.http.routers.emulatorjs.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.emulatorjs.entrypoints: websecure
+      traefik.http.routers.emulatorjs.service: emulatorjs
+      traefik.http.routers.emulatorjs.tls.certresolver: myresolver
+      traefik.http.routers.emulatorjs-local-insecure.rule: Host(`emulatorjs.${LOCAL_DOMAIN}`)
+      traefik.http.routers.emulatorjs-local-insecure.entrypoints: web
+      traefik.http.routers.emulatorjs-local-insecure.service: emulatorjs
+      traefik.http.routers.emulatorjs-local-insecure.middlewares: emulatorjs-web-redirect
+      traefik.http.routers.emulatorjs-local.rule: Host(`emulatorjs.${LOCAL_DOMAIN}`)
+      traefik.http.routers.emulatorjs-local.entrypoints: websecure
+      traefik.http.routers.emulatorjs-local.service: emulatorjs
+      traefik.http.routers.emulatorjs-local.tls: true
+      runtipi.managed: true
+ 
+```
