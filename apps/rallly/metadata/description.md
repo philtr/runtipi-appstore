@@ -1,28 +1,143 @@
-<div align="center">
-  
-<img src="https://raw.githubusercontent.com/lukevella/rallly/d36c363f60ffdbc7679bf0ae5c6cd74a48a79b47/assets/images/logo-color.svg" width="200px" alt="Rallly" />
+# Checklist
+## Dynamic compose for rallly
+This is a rallly update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://rallly.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/db:/var/lib/postgresql/data
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 🔗 Depends on
+- [ ] 🩺 Healthcheck
 
-</div>
-<br />
-
-<img src="https://raw.githubusercontent.com/lukevella/rallly/main/assets/images/splash.png" alt="Rallly" />
-
-## Description
-Schedule group meetings with friends, colleagues and teams. Create meeting polls to find the best date and time to organize an event based on your participants' availability. Save time and avoid back-and-forth emails.
-
-Built with [Next.js](https://github.com/vercel/next.js/), [Prisma](https://github.com/prisma/prisma), [tRPC](https://github.com/trpc/trpc) & [TailwindCSS](https://github.com/tailwindlabs/tailwindcss)
-
-## Runtipi configuration variables
-
-| Label           | Tipi ENV name           | Type     | Description                                                                                                                                      | Required |
-|-----------------|-------------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| NoReply Email   | RALLLY_NOREPLY_EMAIL    | email    | The email address that will be used to send emails. If not set, SUPPORT_EMAIL will be used instead.                                              | NO       |
-| Support Email   | RALLLY_SUPPORT_EMAIL    | email    | The email of whoever is managing this instance in case a user needs support.                                                                     | YES      |
-| Allowed Emails  | RALLLY_ALLOWED_EMAILS   | text     | Comma separated list of email addresses that are allowed to register and login. You can use wildcard syntax to match a range of email addresses. | NO       |
-| SMTP Host       | RALLLY_SMTP_HOST        | text     | The host address of your SMTP server                                                                                                             | YES      |
-| SMTP Port       | RALLLY_SMTP_PORT        | number   | The port of your SMTP server                                                                                                                     | YES      |
-| SMTP Secure     | RALLLY_SMTP_SECURE      | boolean  | Set to "true" if SSL is enabled for your SMTP connection                                                                                         | NO        |
-| SMTP Enable TLS | RALLLY_SMTP_TLS_ENABLED | boolean  | Enable TLS for your SMTP connection                                                                                                              | NO        |
-| SMTP User       | RALLLY_SMTP_USER        | text     | The username (if auth is enabled on your SMTP server)                                                                                            | NO       |
-| SMTP Password   | RALLLY_SMTP_PWD         | password | The password (if auth is enabled on your SMTP server)                                                                                            | NO       |
-
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "rallly",
+      "image": "lukevella/rallly:3.11.2",
+      "isMain": true,
+      "internalPort": 3000,
+      "environment": {
+        "DATABASE_URL": "postgres://tipi:${RALLLY_DB_PASSWORD}@rallly_db:5432/rallly",
+        "SECRET_PASSWORD": "${RALLLY_SECRET_KEY}",
+        "NEXT_PUBLIC_BASE_URL": "${APP_PROTOCOL:-http}://${APP_DOMAIN}",
+        "NOREPLY_EMAIL": "${RALLLY_NOREPLY_EMAIL}",
+        "SUPPORT_EMAIL": "${RALLLY_SUPPORT_EMAIL}",
+        "SMTP_HOST": "${RALLLY_SMTP_HOST}",
+        "SMTP_PORT": "${RALLLY_SMTP_PORT}",
+        "SMTP_SECURE": "${RALLLY_SMTP_SECURE}",
+        "SMTP_USER": "${RALLLY_SMTP_USER}",
+        "SMTP_PWD": "${RALLLY_SMTP_PWD}",
+        "SMTP_TLS_ENABLED": "${RALLLY_SMTP_TLS_ENABLED}",
+        "ALLOWED_EMAILS": "${RALLLY_ALLOWED_EMAILS}"
+      },
+      "dependsOn": {
+        "rallly_db": {
+          "condition": "service_healthy"
+        }
+      }
+    },
+    {
+      "name": "rallly_db",
+      "image": "postgres:14",
+      "environment": {
+        "POSTGRES_PASSWORD": "${RALLLY_DB_PASSWORD}",
+        "POSTGRES_DB": "rallly",
+        "POSTGRES_USER": "tipi"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/db",
+          "containerPath": "/var/lib/postgresql/data"
+        }
+      ],
+      "healthCheck": {
+        "interval": "5s",
+        "timeout": "5s",
+        "retries": 5,
+        "test": "pg_isready -U tipi"
+      }
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+services:
+  rallly:
+    container_name: rallly
+    image: lukevella/rallly:3.11.2
+    restart: always
+    depends_on:
+      rallly_db:
+        condition: service_healthy
+    ports:
+    - ${APP_PORT}:3000
+    environment:
+    - DATABASE_URL=postgres://tipi:${RALLLY_DB_PASSWORD}@rallly_db:5432/rallly
+    - SECRET_PASSWORD=${RALLLY_SECRET_KEY}
+    - NEXT_PUBLIC_BASE_URL=${APP_PROTOCOL:-http}://${APP_DOMAIN}
+    - NOREPLY_EMAIL=${RALLLY_NOREPLY_EMAIL}
+    - SUPPORT_EMAIL=${RALLLY_SUPPORT_EMAIL}
+    - SMTP_HOST=${RALLLY_SMTP_HOST}
+    - SMTP_PORT=${RALLLY_SMTP_PORT}
+    - SMTP_SECURE=${RALLLY_SMTP_SECURE}
+    - SMTP_USER=${RALLLY_SMTP_USER}
+    - SMTP_PWD=${RALLLY_SMTP_PWD}
+    - SMTP_TLS_ENABLED=${RALLLY_SMTP_TLS_ENABLED}
+    - ALLOWED_EMAILS=${RALLLY_ALLOWED_EMAILS}
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.rallly-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.rallly.loadbalancer.server.port: 3000
+      traefik.http.routers.rallly-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.rallly-insecure.entrypoints: web
+      traefik.http.routers.rallly-insecure.service: rallly
+      traefik.http.routers.rallly-insecure.middlewares: rallly-web-redirect
+      traefik.http.routers.rallly.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.rallly.entrypoints: websecure
+      traefik.http.routers.rallly.service: rallly
+      traefik.http.routers.rallly.tls.certresolver: myresolver
+      traefik.http.routers.rallly-local-insecure.rule: Host(`rallly.${LOCAL_DOMAIN}`)
+      traefik.http.routers.rallly-local-insecure.entrypoints: web
+      traefik.http.routers.rallly-local-insecure.service: rallly
+      traefik.http.routers.rallly-local-insecure.middlewares: rallly-web-redirect
+      traefik.http.routers.rallly-local.rule: Host(`rallly.${LOCAL_DOMAIN}`)
+      traefik.http.routers.rallly-local.entrypoints: websecure
+      traefik.http.routers.rallly-local.service: rallly
+      traefik.http.routers.rallly-local.tls: true
+      runtipi.managed: true
+  rallly_db:
+    container_name: rallly_db
+    image: postgres:14
+    restart: always
+    volumes:
+    - ${APP_DATA_DIR}/data/db:/var/lib/postgresql/data
+    environment:
+    - POSTGRES_PASSWORD=${RALLLY_DB_PASSWORD}
+    - POSTGRES_DB=rallly
+    - POSTGRES_USER=tipi
+    networks:
+    - tipi_main_network
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U tipi
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    labels:
+      runtipi.managed: true
+ 
+```
