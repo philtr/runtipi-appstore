@@ -1,46 +1,146 @@
-# Odoo Overview
+# Checklist
+## Dynamic compose for odoo
+This is a odoo update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://odoo.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/postgresql:/var/lib/postgresql/data
+- [ ] ${APP_DATA_DIR}/data/addons:/mnt/extra-addons
+- [ ] ${APP_DATA_DIR}/data/etc:/etc/odoo
+- [ ] ${APP_DATA_DIR}/data/odoo-web-data:/var/lib/odoo
+- [ ] ${APP_DATA_DIR}/data/filestore:/root/.local/share
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 👤 User (root)
+- [ ] ⌨ Command
+- [ ] 🔗 Depends on
+- [ ] 🔤 TTY (True)
 
-## Introduction
-Odoo is an open-source business management software suite that encompasses a wide range of applications to streamline various business processes. Formerly known as OpenERP, Odoo provides a modular and integrated approach to manage different aspects of a business, including accounting, inventory, human resources, sales, and more.
-
-## Key Features
-
-### 1. **Modularity:**
-   - Odoo is modular, allowing users to choose and integrate only the applications that are relevant to their business needs.
-
-### 2. **Integrated Approach:**
-   - All modules within Odoo seamlessly integrate with each other, providing a cohesive experience for users.
-
-### 3. **User-Friendly Interface:**
-   - The software features an intuitive and user-friendly interface, making it accessible for users with varying levels of technical expertise.
-
-### 4. **Scalability:**
-   - Odoo is highly scalable, making it suitable for small businesses as well as large enterprises. As business needs grow, additional modules can be easily added.
-
-### 5. **Community and Enterprise Editions:**
-   - Odoo is available in both community (open-source) and enterprise editions. The community edition is free, while the enterprise edition includes additional features and support.
-
-## Getting Started with Odoo
-
-To get started with Odoo, follow these steps:
-
-1. **Installation:**
-   - Install Odoo on your tipi server.
-
-2. **Configuration:**
-   - Configure Odoo settings according to your business requirements. This includes setting up users, company information, and modules.
-
-3. **Module Installation:**
-   - Install the specific modules you need for your business, such as Sales, Accounting, Inventory, and HR.
-
-4. **Customization:**
-   - Customize the modules to align with your business processes. Odoo allows for easy customization through its user-friendly interface.
-
-5. **Training:**
-   - Train your team on using Odoo effectively. Take advantage of the available documentation and community resources.
-
-## Conclusion
-
-Odoo is a powerful and versatile business management solution that can be tailored to meet the unique needs of different industries. With its modular design and user-friendly interface, Odoo has gained popularity as a comprehensive ERP solution.
-
-For more detailed information and documentation, visit the [official Odoo website](https://www.odoo.com/).
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "odoodb",
+      "image": "postgres:15",
+      "user": "root",
+      "environment": {
+        "POSTGRES_USER": "odoo",
+        "POSTGRES_PASSWORD": "${ODOO_POSTGRES_PASSWORD}",
+        "POSTGRES_DB": "postgres"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/postgresql",
+          "containerPath": "/var/lib/postgresql/data"
+        }
+      ]
+    },
+    {
+      "name": "odoo",
+      "image": "odoo:18",
+      "isMain": true,
+      "internalPort": 8069,
+      "user": "root",
+      "environment": {
+        "HOST": "odoodb",
+        "USER": "odoo",
+        "PASSWORD": "${ODOO_POSTGRES_PASSWORD}"
+      },
+      "dependsOn": [
+        "odoodb"
+      ],
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/addons",
+          "containerPath": "/mnt/extra-addons"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/etc",
+          "containerPath": "/etc/odoo"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/odoo-web-data",
+          "containerPath": "/var/lib/odoo"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/filestore",
+          "containerPath": "/root/.local/share"
+        }
+      ],
+      "command": "--",
+      "tty": true
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+services:
+  odoodb:
+    container_name: odoodb
+    image: postgres:15
+    user: root
+    environment:
+    - POSTGRES_USER=odoo
+    - POSTGRES_PASSWORD=${ODOO_POSTGRES_PASSWORD}
+    - POSTGRES_DB=postgres
+    restart: unless-stopped
+    volumes:
+    - ${APP_DATA_DIR}/data/postgresql:/var/lib/postgresql/data
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+  odoo:
+    container_name: odoo
+    image: odoo:18
+    user: root
+    depends_on:
+    - odoodb
+    ports:
+    - ${APP_PORT}:8069
+    tty: true
+    command: --
+    environment:
+    - HOST=odoodb
+    - USER=odoo
+    - PASSWORD=${ODOO_POSTGRES_PASSWORD}
+    volumes:
+    - ${APP_DATA_DIR}/data/addons:/mnt/extra-addons
+    - ${APP_DATA_DIR}/data/etc:/etc/odoo
+    - ${APP_DATA_DIR}/data/odoo-web-data:/var/lib/odoo
+    - ${APP_DATA_DIR}/data/filestore:/root/.local/share
+    restart: unless-stopped
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.odoo-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.odoo.loadbalancer.server.port: 8069
+      traefik.http.routers.odoo-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.odoo-insecure.entrypoints: web
+      traefik.http.routers.odoo-insecure.service: odoo
+      traefik.http.routers.odoo-insecure.middlewares: odoo-web-redirect
+      traefik.http.routers.odoo.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.odoo.entrypoints: websecure
+      traefik.http.routers.odoo.service: odoo
+      traefik.http.routers.odoo.tls.certresolver: myresolver
+      traefik.http.routers.odoo-local-insecure.rule: Host(`odoo.${LOCAL_DOMAIN}`)
+      traefik.http.routers.odoo-local-insecure.entrypoints: web
+      traefik.http.routers.odoo-local-insecure.service: odoo
+      traefik.http.routers.odoo-local-insecure.middlewares: odoo-web-redirect
+      traefik.http.routers.odoo-local.rule: Host(`odoo.${LOCAL_DOMAIN}`)
+      traefik.http.routers.odoo-local.entrypoints: websecure
+      traefik.http.routers.odoo-local.service: odoo
+      traefik.http.routers.odoo-local.tls: true
+      runtipi.managed: true
+ 
+```
