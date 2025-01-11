@@ -1,16 +1,61 @@
-# What is Suwayomi?
+# Checklist
+## Dynamic compose for suwayomi
+This is a suwayomi update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://suwayomi.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data:/home/suwayomi/.local/share/Tachidesk
+##### Specific instructions :
+- [ ] 🌳 Environment
 
-A free and open-source manga reader server that runs extensions built for [Tachiyomi](https://tachiyomi.org/).
-
-Suwayomi is an independent Tachiyomi compatible software and is **not a Fork of** Tachiyomi.
-
-Suwayomi-Server is highly multi-platform. Any platform that runs Java and/or has a modern browser can run it, including Windows, Linux, macOS, Chrome OS, etc.
-
-## Here is a list of current features:
-
-- Adding repositories for manga sources
-- A library to save your mangas and categories to put them into
-- Searching and browsing installed sources
-Ability to download manga for offline reading
-- Backup and restore support powered by Tachiyomi-compatible Backups
-- Viewing latest updated chapters.
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "suwayomi",
+      "image": "ghcr.io/suwayomi/tachidesk:v1.1.1",
+      "isMain": true,
+      "internalPort": 4567,
+      "environment": {
+        "TZ": "${TZ}",
+        "BIND_IP": "0.0.0.0"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data",
+          "containerPath": "/home/suwayomi/.local/share/Tachidesk"
+        }
+      ]
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.9'
+services:
+  suwayomi:
+    image: ghcr.io/suwayomi/tachidesk:v1.1.1
+    container_name: suwayomi
+    environment:
+    - TZ=${TZ}
+    - BIND_IP=0.0.0.0
+    volumes:
+    - ${APP_DATA_DIR}/data:/home/suwayomi/.local/share/Tachidesk
+    ports:
+    - ${APP_PORT}:4567
+    restart: unless-stopped
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+ 
+```
