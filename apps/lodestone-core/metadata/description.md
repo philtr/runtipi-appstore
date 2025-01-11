@@ -1,33 +1,83 @@
-## Lodestone Core
+# Checklist
+## Dynamic compose for lodestone-core
+This is a lodestone-core update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://lodestone-core.tipi.local
+- [ ] Additionnal Port(s)
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/lodestone-data:/root/.lodestone
+##### Specific instructions :
+- [ ] 👤 User (0:0)
 
-A free, open source server hosting tool for Minecraft and other multiplayers
-
-### Important Connection and Setup Information
-
-- **Important Connection**: Connect to your remote hosted lodestone instance at the [Lodestone Web Gui](https://www.lodestone.cc) or with the [Desktop Apps Here](https://github.com/Lodestone-Team/dashboard/releases/latest)
-
-- **First User Setup**: After connecting to the panel, it will ask you to setup your inital user. To find the secret key, you can find it in your logs with `docker logs lodestone-core`
-
-### Ports
-
-- Ports 25565-25575 are open for Minecraft Servers
-
-- Port 16662 used by the [Lodestone Dashboard](https://lodestone.cc)
-
-### Features and roadmap
-
-- [x] Clean and intuitive UI
-- [x] One-click installation and setup
-- [x] Collaborative remote server and resource management
-- [x] Priority on safety and security
-- [ ] User permission management 🚧
-- [ ] Automated macros and tasks 🚧
-- [ ] Connecting without port forward 🚧
-
-For any troubleshooting, see our [wiki](https://github.com/Lodestone-Team/lodestone/wiki/Known-Issues).
-
-### Safety & Security
-
-Lodestone Core is written entirely in safe Rust, and uses`#![forbid(unsafe_code)]`. However **we can't guarantee the safety of the crates and binaries we link to**, as those may use unsafe rust.
-
-Lodestone is created with security as a top priority. While most of the safety critical code such as login and permissions management have been tested thoroughly, **no formal security audit has been done for any part of Lodestone.**
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "lodestone-core",
+      "image": "ghcr.io/lodestone-team/lodestone_core:0.5.1",
+      "isMain": true,
+      "internalPort": 16662,
+      "addPorts": [
+        {
+          "hostPort": "25565-25575",
+          "containerPort": "25565-25575"
+        }
+      ],
+      "user": "0:0",
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/lodestone-data",
+          "containerPath": "/root/.lodestone"
+        }
+      ]
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.7'
+services:
+  lodestone-core:
+    container_name: lodestone-core
+    image: ghcr.io/lodestone-team/lodestone_core:0.5.1
+    ports:
+    - ${APP_PORT}:16662
+    - 25565-25575:25565-25575
+    restart: unless-stopped
+    user: 0:0
+    volumes:
+    - ${APP_DATA_DIR}/data/lodestone-data:/root/.lodestone
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.lodestone-core-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.lodestone-core.loadbalancer.server.port: 16662
+      traefik.http.routers.lodestone-core-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.lodestone-core-insecure.entrypoints: web
+      traefik.http.routers.lodestone-core-insecure.service: lodestone-core
+      traefik.http.routers.lodestone-core-insecure.middlewares: lodestone-core-web-redirect
+      traefik.http.routers.lodestone-core.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.lodestone-core.entrypoints: websecure
+      traefik.http.routers.lodestone-core.service: lodestone-core
+      traefik.http.routers.lodestone-core.tls.certresolver: myresolver
+      traefik.http.routers.lodestone-core-local-insecure.rule: Host(`lodestone-core.${LOCAL_DOMAIN}`)
+      traefik.http.routers.lodestone-core-local-insecure.entrypoints: web
+      traefik.http.routers.lodestone-core-local-insecure.service: lodestone-core
+      traefik.http.routers.lodestone-core-local-insecure.middlewares: lodestone-core-web-redirect
+      traefik.http.routers.lodestone-core-local.rule: Host(`lodestone-core.${LOCAL_DOMAIN}`)
+      traefik.http.routers.lodestone-core-local.entrypoints: websecure
+      traefik.http.routers.lodestone-core-local.service: lodestone-core
+      traefik.http.routers.lodestone-core-local.tls: true
+      runtipi.managed: true
+ 
+```
