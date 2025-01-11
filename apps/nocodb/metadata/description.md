@@ -1,5 +1,175 @@
-# The Open Source Airtable Alternative
+# Checklist
+## Dynamic compose for nocodb
+This is a nocodb update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://nocodb.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/nocode-data:/usr/app/data
+- [ ] ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+- [ ] ${APP_DATA_DIR}/data/redis:/data
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 🔗 Depends on
+- [ ] 🩺 Healthcheck
+- [ ] ⌨ Command
 
-Turns any MySQL, PostgreSQL, SQL Server, SQLite & MariaDB into a smart-spreadsheet.
-
-![demo](https://user-images.githubusercontent.com/35857179/194825053-3aa3373d-3e0f-4b42-b3f1-42928332054a.gif)
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "nocodb",
+      "image": "nocodb/nocodb:0.260.1",
+      "isMain": true,
+      "internalPort": 8080,
+      "environment": {
+        "NC_DB": "pg://nocodb-db:5432?u",
+        "NC_PUBLIC_URL": "${APP_PROTOCOL:-http}://${APP_DOMAIN}",
+        "NC_AUTH_JWT_SECRET": "${NOCODB_JWT_SECRET}",
+        "NC_REDIS_URL": "redis://default:${NOCODB_REDIS_PASSWORD}@nocodb-redis:6379",
+        "DB_QUERY_LIMIT_DEFAULT": "${NOCODB_TABLE_ROWS-25}"
+      },
+      "dependsOn": {
+        "nocodb-db": {
+          "condition": "service_healthy"
+        }
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/nocode-data",
+          "containerPath": "/usr/app/data"
+        }
+      ]
+    },
+    {
+      "name": "nocodb-db",
+      "image": "postgres:16",
+      "environment": {
+        "POSTGRES_DB": "nocodb",
+        "POSTGRES_PASSWORD": "${NOCODB_DB_PASSWORD}",
+        "POSTGRES_USER": "postgres"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/postgres",
+          "containerPath": "/var/lib/postgresql/data"
+        }
+      ],
+      "healthCheck": {
+        "interval": "10s",
+        "timeout": "2s",
+        "retries": 10,
+        "test": "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""
+      }
+    },
+    {
+      "name": "nocodb-redis",
+      "image": "redis:alpine",
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/redis",
+          "containerPath": "/data"
+        }
+      ],
+      "command": "redis-server --requirepass ${NOCODB_REDIS_PASSWORD}",
+      "healthCheck": {
+        "interval": "1s",
+        "timeout": "3s",
+        "retries": 30,
+        "test": "redis-cli ping"
+      }
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '2.1'
+services:
+  nocodb:
+    container_name: nocodb
+    depends_on:
+      nocodb-db:
+        condition: service_healthy
+    environment:
+    - NC_DB=pg://nocodb-db:5432?u=postgres&p=${NOCODB_DB_PASSWORD}&d=nocodb
+    - NC_PUBLIC_URL=${APP_PROTOCOL:-http}://${APP_DOMAIN}
+    - NC_AUTH_JWT_SECRET=${NOCODB_JWT_SECRET}
+    - NC_REDIS_URL=redis://default:${NOCODB_REDIS_PASSWORD}@nocodb-redis:6379
+    - DB_QUERY_LIMIT_DEFAULT=${NOCODB_TABLE_ROWS-25}
+    image: nocodb/nocodb:0.260.1
+    ports:
+    - ${APP_PORT}:8080
+    restart: always
+    volumes:
+    - ${APP_DATA_DIR}/data/nocode-data:/usr/app/data
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.nocodb-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.nocodb.loadbalancer.server.port: 8080
+      traefik.http.routers.nocodb-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.nocodb-insecure.entrypoints: web
+      traefik.http.routers.nocodb-insecure.service: nocodb
+      traefik.http.routers.nocodb-insecure.middlewares: nocodb-web-redirect
+      traefik.http.routers.nocodb.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.nocodb.entrypoints: websecure
+      traefik.http.routers.nocodb.service: nocodb
+      traefik.http.routers.nocodb.tls.certresolver: myresolver
+      traefik.http.routers.nocodb-local-insecure.rule: Host(`nocodb.${LOCAL_DOMAIN}`)
+      traefik.http.routers.nocodb-local-insecure.entrypoints: web
+      traefik.http.routers.nocodb-local-insecure.service: nocodb
+      traefik.http.routers.nocodb-local-insecure.middlewares: nocodb-web-redirect
+      traefik.http.routers.nocodb-local.rule: Host(`nocodb.${LOCAL_DOMAIN}`)
+      traefik.http.routers.nocodb-local.entrypoints: websecure
+      traefik.http.routers.nocodb-local.service: nocodb
+      traefik.http.routers.nocodb-local.tls: true
+      runtipi.managed: true
+  nocodb-db:
+    container_name: nocodb-db
+    environment:
+      POSTGRES_DB: nocodb
+      POSTGRES_PASSWORD: ${NOCODB_DB_PASSWORD}
+      POSTGRES_USER: postgres
+    healthcheck:
+      interval: 10s
+      retries: 10
+      test: pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      timeout: 2s
+    image: postgres:16
+    restart: always
+    volumes:
+    - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+  nocodb-redis:
+    image: redis:alpine
+    container_name: nocodb-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${NOCODB_REDIS_PASSWORD}
+    volumes:
+    - ${APP_DATA_DIR}/data/redis:/data
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+ 
+```
