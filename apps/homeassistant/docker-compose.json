@@ -5,6 +5,7 @@
       "name": "homeassistant",
       "image": "ghcr.io/home-assistant/home-assistant:stable",
       "isMain": true,
+      "internalPort": 8123,
       "networkMode": "host",
       "volumes": [
         {
