@@ -9,10 +9,10 @@
       "environment": {
         "TZ": "${TZ}"
       },
-      "dependsOn": ["rsshub_redis", "rsshub_browserless"]
+      "dependsOn": ["rsshub-redis", "rsshub-browserless"]
     },
     {
-      "name": "rsshub_browserless",
+      "name": "rsshub-browserless",
       "image": "browserless/chrome",
       "ulimits": {
         "core": {
@@ -22,7 +22,7 @@
       }
     },
     {
-      "name": "rsshub_redis",
+      "name": "rsshub-redis",
       "image": "redis:alpine",
       "volumes": [
         {
