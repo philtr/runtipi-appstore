@@ -1,26 +1,75 @@
-# Kiwix Server
+# Checklist
+## Dynamic compose for kiwix-serve
+This is a kiwix-serve update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://kiwix-serve.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/zim:/data
+##### Specific instructions :
+- [ ] ⌨ Command
 
-Kiwix Server is a .zim compatible web server: it allows you to deliver .zim files over the HTTP protocol within your local network – be it a University or your own house. Simply start Kiwix-Serve on your machine, and your content will be available for anybody through their web browser. This allows you to view a website without having internet access.
-
-
-**Ensure that your there are .zim files in the `${APP_DATA_DIR}/data/zim` directory otherwise the server won't launch properly and will need to be restarted**
-
-For doumentation see [the Kiwix wiki](https://wiki.kiwix.org/wiki/Kiwix-serve)
-
-## Features
-
-* Full text search engine
-* Search suggestions
-* Really small and efficient
-* Compatible with almost all browsers
-* Available on all platforms
-* Available as command line executable
-* Embedded in Kiwix UI
-* Able to deal with one ZIM file or XML library files
-* [RESTful API endpoint with OPDS (XML)](https://wiki.kiwix.org/wiki/OPDS)
-
-## What are ZIM files?
-
-The ZIM file format is an open file format that stores wiki content for offline usage. The format is defined by the openZIM project, which also supports an Kiwix. The format is primarily used to store the contents of Wikipedia and other Wikimedia projects, including articles, full-text search indices and auxiliary files.
-
-Download ZIM files from the [Kiwix library](https://library.kiwix.org/#lang=eng), or create your own (see [Zimit](https://www.youzim.it/))
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "kiwix-serve",
+      "image": "ghcr.io/kiwix/kiwix-serve:3.7.0-2",
+      "isMain": true,
+      "internalPort": 8080,
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/zim",
+          "containerPath": "/data"
+        }
+      ],
+      "command": "*.zim"
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.9'
+services:
+  kiwix-serve:
+    container_name: kiwix-serve
+    image: ghcr.io/kiwix/kiwix-serve:3.7.0-2
+    ports:
+    - ${APP_PORT}:8080
+    volumes:
+    - ${APP_DATA_DIR}/data/zim:/data
+    command: '*.zim'
+    restart: unless-stopped
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.kiwix-serve-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.kiwix-serve.loadbalancer.server.port: 8080
+      traefik.http.routers.kiwix-serve-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.kiwix-serve-insecure.entrypoints: web
+      traefik.http.routers.kiwix-serve-insecure.service: kiwix-serve
+      traefik.http.routers.kiwix-serve-insecure.middlewares: kiwix-serve-web-redirect
+      traefik.http.routers.kiwix-serve.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.kiwix-serve.entrypoints: websecure
+      traefik.http.routers.kiwix-serve.service: kiwix-serve
+      traefik.http.routers.kiwix-serve.tls.certresolver: myresolver
+      traefik.http.routers.kiwix-serve-local-insecure.rule: Host(`kiwix-serve.${LOCAL_DOMAIN}`)
+      traefik.http.routers.kiwix-serve-local-insecure.entrypoints: web
+      traefik.http.routers.kiwix-serve-local-insecure.service: kiwix-serve
+      traefik.http.routers.kiwix-serve-local-insecure.middlewares: kiwix-serve-web-redirect
+      traefik.http.routers.kiwix-serve-local.rule: Host(`kiwix-serve.${LOCAL_DOMAIN}`)
+      traefik.http.routers.kiwix-serve-local.entrypoints: websecure
+      traefik.http.routers.kiwix-serve-local.service: kiwix-serve
+      traefik.http.routers.kiwix-serve-local.tls: true
+      runtipi.managed: true
+ 
+```
