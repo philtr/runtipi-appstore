@@ -1,103 +1,191 @@
-# CrowdSec
+# Checklist
+## Dynamic compose for crowdsec
+This is a crowdsec update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://crowdsec.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] /etc/localtime:/etc/localtime:ro
+- [ ] /var/run/docker.sock:/var/run/docker.sock:ro
+- [ ] ${APP_DATA_DIR}/data/crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml
+- [ ] ${APP_DATA_DIR}/data/crowdsec:/etc/crowdsec
+- [ ] ${APP_DATA_DIR}/data/crowdsec/db:/var/lib/crowdsec/data
+- [ ] /var/log/auth.log:/var/log/auth.log:ro
+- [ ] /var/log/traefik:/var/log/traefik:ro
+- [ ] /var/log/crowdsec:/var/log/crowdsec:ro
+- [ ] ${APP_DATA_DIR}/data/crowdsec-dashboard/data:/data
+- [ ] ${APP_DATA_DIR}/data/crowdsec/db:/metabase-data
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 🔗 Depends on
 
-CrowdSec - the open-source and participative security solution offering crowdsourced protection against malicious IPs and access to the most advanced real-world CTI
-
-CrowdSec is a free, modern & collaborative behavior detection engine, coupled with a global IP reputation network. It stacks on fail2ban's philosophy but is IPV6 compatible and 60x faster (Go vs Python), it uses Grok patterns to parse logs and YAML scenarios to identify behaviors. CrowdSec is engineered for modern Cloud / Containers / VM-based infrastructures (by decoupling detection and remediation). Once detected you can remedy threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) while the aggressive IP can be sent to CrowdSec for curation before being shared among all users to further improve everyone's security. See FAQ or read below for more.
-
-## App Links
-
-<https://www.crowdsec.net/>
-
-<https://github.com/crowdsecurity/crowdsec>
-
-<https://hub.docker.com/r/crowdsecurity/crowdsec>
-
-## Bouncer API Key
-
-The app stack contains the crowdsec service and a bouncer. The bouncer needs an API Key to connect to the service.
-Since the API Key needs to be generated after the initial start, you must provide a temporary dummy Bouncer API Key for the stack to run.
-
-After you started the app, head to a console and use 
-
-```bash
-docker exec -t crowdsec cscli bouncers add crowdsec-bouncer-traefik
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "crowdsec",
+      "image": "crowdsecurity/crowdsec:v1.6.4",
+      "isMain": true,
+      "environment": {
+        "COLLECTIONS": " crowdsecurity/linux crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/whitelist-good-actors crowdsecurity/sshd",
+        "GID": "${GID-1000}"
+      },
+      "volumes": [
+        {
+          "hostPath": "/etc/localtime",
+          "containerPath": "/etc/localtime",
+          "readOnly": true
+        },
+        {
+          "hostPath": "/var/run/docker.sock",
+          "containerPath": "/var/run/docker.sock",
+          "readOnly": true
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/crowdsec/acquis.yaml",
+          "containerPath": "/etc/crowdsec/acquis.yaml"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/crowdsec",
+          "containerPath": "/etc/crowdsec"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/crowdsec/db",
+          "containerPath": "/var/lib/crowdsec/data"
+        },
+        {
+          "hostPath": "/var/log/auth.log",
+          "containerPath": "/var/log/auth.log",
+          "readOnly": true
+        },
+        {
+          "hostPath": "/var/log/traefik",
+          "containerPath": "/var/log/traefik",
+          "readOnly": true
+        },
+        {
+          "hostPath": "/var/log/crowdsec",
+          "containerPath": "/var/log/crowdsec",
+          "readOnly": true
+        }
+      ]
+    },
+    {
+      "name": "crowdsec-bouncer-traefik",
+      "image": "fbonalair/traefik-crowdsec-bouncer:latest",
+      "environment": {
+        "CROWDSEC_BOUNCER_API_KEY": "${CROWDSEC_BOUNCER_API_KEY}",
+        "CROWDSEC_AGENT_HOST": "crowdsec:8080"
+      },
+      "dependsOn": [
+        "crowdsec"
+      ]
+    },
+    {
+      "name": "crowdsec-dashboard",
+      "image": "metabase/metabase",
+      "internalPort": 3000,
+      "environment": {
+        "MB_DB_FILE": "/data/metabase.db",
+        "MGID": "${GID-1000}"
+      },
+      "dependsOn": [
+        "crowdsec"
+      ],
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/crowdsec-dashboard/data",
+          "containerPath": "/data"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/crowdsec/db",
+          "containerPath": "/metabase-data"
+        }
+      ]
+    }
+  ]
+} 
 ```
-
-```bash
-# docker exec -t crowdsec cscli bouncers add crowdsec-bouncer-traefik
-API key for 'crowdsec-bouncer-traefik':
-
-   djC0YxRO3xzKG1mctemSzaUfs2yj4vG7cQ7fliTOJR0
-
-Please keep this key since you will not be able to retrieve it!
+# Original YAML
+```yaml
+services:
+  crowdsec:
+    container_name: crowdsec
+    image: crowdsecurity/crowdsec:v1.6.4
+    restart: unless-stopped
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - ${APP_DATA_DIR}/data/crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml
+    - ${APP_DATA_DIR}/data/crowdsec:/etc/crowdsec
+    - ${APP_DATA_DIR}/data/crowdsec/db:/var/lib/crowdsec/data
+    - /var/log/auth.log:/var/log/auth.log:ro
+    - /var/log/traefik:/var/log/traefik:ro
+    - /var/log/crowdsec:/var/log/crowdsec:ro
+    environment:
+    - COLLECTIONS= crowdsecurity/linux crowdsecurity/traefik crowdsecurity/http-cve
+      crowdsecurity/whitelist-good-actors crowdsecurity/sshd
+    - GID=${GID-1000}
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+  crowdsec-bouncer-traefik:
+    container_name: crowdsec-bouncer-traefik
+    image: fbonalair/traefik-crowdsec-bouncer:latest
+    restart: unless-stopped
+    depends_on:
+    - crowdsec
+    environment:
+    - CROWDSEC_BOUNCER_API_KEY=${CROWDSEC_BOUNCER_API_KEY}
+    - CROWDSEC_AGENT_HOST=crowdsec:8080
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+  crowdsec-dashboard:
+    container_name: crowdsec-dashboard
+    image: metabase/metabase
+    restart: unless-stopped
+    ports:
+    - ${APP_PORT}:3000
+    environment:
+    - MB_DB_FILE=/data/metabase.db
+    - MGID=${GID-1000}
+    depends_on:
+    - crowdsec
+    volumes:
+    - ${APP_DATA_DIR}/data/crowdsec-dashboard/data:/data
+    - ${APP_DATA_DIR}/data/crowdsec/db:/metabase-data
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.crowdsec-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.crowdsec.loadbalancer.server.port: 3000
+      traefik.http.routers.crowdsec-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.crowdsec-insecure.entrypoints: web
+      traefik.http.routers.crowdsec-insecure.service: crowdsec
+      traefik.http.routers.crowdsec-insecure.middlewares: crowdsec-web-redirect
+      traefik.http.routers.crowdsec.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.crowdsec.entrypoints: websecure
+      traefik.http.routers.crowdsec.service: crowdsec
+      traefik.http.routers.crowdsec.tls.certresolver: myresolver
+      traefik.http.routers.crowdsec-local-insecure.rule: Host(`crowdsec.${LOCAL_DOMAIN}`)
+      traefik.http.routers.crowdsec-local-insecure.entrypoints: web
+      traefik.http.routers.crowdsec-local-insecure.service: crowdsec
+      traefik.http.routers.crowdsec-local-insecure.middlewares: crowdsec-web-redirect
+      traefik.http.routers.crowdsec-local.rule: Host(`crowdsec.${LOCAL_DOMAIN}`)
+      traefik.http.routers.crowdsec-local.entrypoints: websecure
+      traefik.http.routers.crowdsec-local.service: crowdsec
+      traefik.http.routers.crowdsec-local.tls: true
+      runtipi.managed: true
+ 
 ```
-
-To get the Bouncer API Key, use this Key in the settings of the app instead of the dummy Bouncer API Key and restart the app.
-
-## Check Metrics
-
-```bash
-docker exec crowdsec cscli metrics
-```
-
-## Integrate in crowdsec Console
-
-https://app.crowdsec.net/security-engines
-
-With the key from the command line in the section `Enroll your CrowdSec Security Engine`execute:
-
-```bash
-docker exec crowdsec cscli console enroll {{ KEY }}
-```
-
-## Dashboard
-
-The dashboard comes with a preconfigured user:
-
-Email address: crowdsec@crowdsec.net
-
-Password: !!Cr0wdS3c_M3t4b4s3??
-
-
-## Traefik Integration
-
-add the following files and / or settings:
-
-- tipi-compose.yml
-
-  ```yml
-  services:
-    runtipi-reverse-proxy:
-      volumes:
-        - /var/log/traefik/:/var/log/
-  ```
-
-- traefik.yml
-
-  ```yml
-  entryPoints:
-    websecure:
-      http:
-        middlewares:
-          - crowdsec-bouncer@file
-  log:
-    filePath: "/var/log/traefik.log"
-    level: INFO
-
-  accessLog:
-    filePath: "/var/log/access.log"
-    bufferingSize: 100
-  ```
-
-- dynamic.yml
-
-  ```yml
-  http:
-    middlewares:
-      crowdsec-bouncer:
-        forwardauth:
-          address: http://crowdsec-bouncer-traefik:8080/api/v1/forwardAuth
-          trustForwardHeader: true
-  ```
-
-restart runtipi to apply the settings.
