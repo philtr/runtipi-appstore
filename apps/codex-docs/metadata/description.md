@@ -1,40 +1,115 @@
-# CodeX Docs
+# Checklist
+## Dynamic compose for codex-docs
+This is a codex-docs update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://codex-docs.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/uploads:/usr/src/app/uploads
+- [ ] ${APP_DATA_DIR}/data/db:/usr/src/app/db
+- [ ] ${APP_DATA_DIR}/data/docs-config.yaml:/usr/src/app/docs-config.yaml
+##### Specific instructions :
+- [ ] 🌳 Environment
 
-### Custom Config, view Here https://github.com/codex-team/codex.docs/blob/main/docs-config.yaml
-### Can Also Be configured with ENV, see here https://docs.codex.so/configuration#override-properties-with-environment-variables
-
-[CodeX Docs](https://docs.codex.so/) is a free docs application. It's based on Editor.js ecosystem which gives all modern opportunities for working with content.
-
-You can use it for product documentation, for internal team docs, for personal notes or any other need.
-
-![page-overview-bright](https://user-images.githubusercontent.com/3684889/190149130-6a6fcdec-09bc-4f96-8bdc-5ff4d789f248.png)
-
-It's super easy to install and use.
-
-## Features
-
-- 🤩 [Editor.js](https://editorjs.io/) ecosystem powered
-- 📂 Docs nesting — create any structure you need
-- 📱 Nice look on Desktop and Mobile
-- 🔥 Beautiful page URLs. Human-readable and SEO-friendly.
-- 🦅 [Hawk](https://hawk.so/?from=docs-demo) is hunting. Errors tracking integrated
-- 💌 [Misprints](https://github.com/codex-team/codex.misprints) reports to the Telegram / Slack
-- 📈 [Yandex Metrica](https://metrica.yandex.com/about) integrated
-- 🚢 Deploy easily — no DB and other deps required
-- 🤙 Simple configuration
-- ⚙️ Tune UI as you need. Collapse sections, hide the Sidebar
-
-## Demo
-
-Here is our [Demo Application](https://docs-demo.codex.so/) where you can try CodeX Docs in action.
-
-## Guides
-
-1. [Getting Started](https://docs.codex.so/getting-started)
-2. [Configuration](https://docs.codex.so/configuration)
-3. [Kubernetes deployment](https://docs.codex.so/k8s-deployment)
-4. [Authentication](https://docs.codex.so/authentication)
-5. [Writing](https://docs.codex.so/writing)
-6. [How to enable analytics](https://docs.codex.so/yandex-metrica)
-7. [Contribution guide](https://docs.codex.so/contribution)
-
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "codex-docs",
+      "image": "ghcr.io/codex-team/codex.docs:v2.2",
+      "isMain": true,
+      "internalPort": 3000,
+      "environment": {
+        "APP_CONFIG_auth_password": "${CODEX_AUTH_PASSWORD}",
+        "APP_CONFIG_auth_secret": "${CODEX_AUTH_SECRET}",
+        "APP_CONFIG_database_driver": "mongodb",
+        "APP_CONFIG_database_mongodb_uri": "mongodb://tipi:${CODEX_DB_PASSWORD}@codex-db:27017"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/uploads",
+          "containerPath": "/usr/src/app/uploads"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/db",
+          "containerPath": "/usr/src/app/db"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/docs-config.yaml",
+          "containerPath": "/usr/src/app/docs-config.yaml"
+        }
+      ]
+    },
+    {
+      "name": "codex-db",
+      "image": "mongo:latest",
+      "environment": {
+        "MONGO_INITDB_ROOT_USERNAME": "tipi",
+        "MONGO_INITDB_ROOT_PASSWORD": "${CODEX_DB_PASSWORD}"
+      }
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.2'
+services:
+  codex-docs:
+    container_name: codex-docs
+    image: ghcr.io/codex-team/codex.docs:v2.2
+    ports:
+    - ${APP_PORT}:3000
+    restart: unless-stopped
+    environment:
+    - APP_CONFIG_auth_password=${CODEX_AUTH_PASSWORD}
+    - APP_CONFIG_auth_secret=${CODEX_AUTH_SECRET}
+    - APP_CONFIG_database_driver=mongodb
+    - APP_CONFIG_database_mongodb_uri=mongodb://tipi:${CODEX_DB_PASSWORD}@codex-db:27017
+    volumes:
+    - ${APP_DATA_DIR}/data/uploads:/usr/src/app/uploads
+    - ${APP_DATA_DIR}/data/db:/usr/src/app/db
+    - ${APP_DATA_DIR}/data/docs-config.yaml:/usr/src/app/docs-config.yaml
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.codex-docs-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.codex-docs.loadbalancer.server.port: 3000
+      traefik.http.routers.codex-docs-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.codex-docs-insecure.entrypoints: web
+      traefik.http.routers.codex-docs-insecure.service: codex-docs
+      traefik.http.routers.codex-docs-insecure.middlewares: codex-docs-web-redirect
+      traefik.http.routers.codex-docs.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.codex-docs.entrypoints: websecure
+      traefik.http.routers.codex-docs.service: codex-docs
+      traefik.http.routers.codex-docs.tls.certresolver: myresolver
+      traefik.http.routers.codex-docs-local-insecure.rule: Host(`codex-docs.${LOCAL_DOMAIN}`)
+      traefik.http.routers.codex-docs-local-insecure.entrypoints: web
+      traefik.http.routers.codex-docs-local-insecure.service: codex-docs
+      traefik.http.routers.codex-docs-local-insecure.middlewares: codex-docs-web-redirect
+      traefik.http.routers.codex-docs-local.rule: Host(`codex-docs.${LOCAL_DOMAIN}`)
+      traefik.http.routers.codex-docs-local.entrypoints: websecure
+      traefik.http.routers.codex-docs-local.service: codex-docs
+      traefik.http.routers.codex-docs-local.tls: true
+      runtipi.managed: true
+  codex-db:
+    container_name: codex-db
+    image: mongo:latest
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: tipi
+      MONGO_INITDB_ROOT_PASSWORD: ${CODEX_DB_PASSWORD}
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+ 
+```
