@@ -1,44 +1,82 @@
-# QDirStat
+# Checklist
+## Dynamic compose for qdirstat
+This is a qdirstat update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://qdirstat.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/qdirstat/config
+- [ ] ${APP_DATA_DIR}/data/qdirstat/app/data
+- [ ] /:/host:ro
 
-QDirStat is a graphical application to show where your disk space has gone and
-to help you to clean it up.
-
-This is a Qt-only port of the old Qt3/KDE3-based KDirStat, now based on the
-latest Qt 5. It does not need any KDE libs or infrastructure. It runs on every
-X11-based desktop on Linux, BSD and other Unix-like systems and of course in a
-Docker container.
-
-![Screenshot](https://github.com/shundhammer/qdirstat/raw/master/screenshots/QDirStat-main-win.png)
-
-_Main window screenshot - notice the multi-selection in the tree and the treemap_
-
-## Features
-
-QDirStat has a number of new features compared to KDirStat. To name a few:
-
-- Multi-selection in both the tree and the treemap.
-
-- Unlimited number of user-defined cleanup actions.
-
-- Properly show errors of cleanup actions (and their output, if desired).
-
-- Configurable file categories (MIME types), treemap colors, exclude rules,
-  tree columns.
-
-- Package manager support:
-  - Show what software package a system file belongs to.
-  - **Packages View** showing disk usage of installed software
-    packages and their individual files.
-  - **Unpacked Files View** showing what files in system directories do not belong to any installed software package.
-
-- New views:
-  - Disk usage per file type (by filename extension).
-  - File size histogram view.
-  - File age view.
-  - Free, used and reserved disk size for each mounted filesystem (like _df_)
-  
-  ---
-
-  # Tipi Specific Note
-
-  By default, qDirStat will analyze the /runtipi/ directory, *not the whole system that tipi is installed on!*
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "qdirstat",
+      "image": "lscr.io/linuxserver/qdirstat:1.8.1-ls82",
+      "isMain": true,
+      "internalPort": 3000,
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/qdirstat/config"
+        },
+        {
+          "hostPath": "${APP_DATA_DIR}/data/qdirstat/app/data"
+        },
+        {
+          "hostPath": "/",
+          "containerPath": "/host",
+          "readOnly": true
+        }
+      ]
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: 1.8.1-ls82
+services:
+  qdirstat:
+    container_name: qdirstat
+    restart: unless-stopped
+    ports:
+    - ${APP_PORT}:3000
+    volumes:
+    - ${APP_DATA_DIR}/data/qdirstat/config
+    - ${APP_DATA_DIR}/data/qdirstat/app/data
+    - /:/host:ro
+    image: lscr.io/linuxserver/qdirstat:1.8.1-ls82
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.qdirstat-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.qdirstat.loadbalancer.server.port: 8080
+      traefik.http.routers.qdirstat-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.qdirstat-insecure.entrypoints: web
+      traefik.http.routers.qdirstat-insecure.service: qdirstat
+      traefik.http.routers.qdirstat-insecure.middlewares: qdirstat-web-redirect
+      traefik.http.routers.qdirstat.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.qdirstat.entrypoints: websecure
+      traefik.http.routers.qdirstat.service: qdirstat
+      traefik.http.routers.qdirstat.tls.certresolver: myresolver
+      traefik.http.routers.qdirstat-local-insecure.rule: Host(`qdirstat.${LOCAL_DOMAIN}`)
+      traefik.http.routers.qdirstat-local-insecure.entrypoints: web
+      traefik.http.routers.qdirstat-local-insecure.service: qdirstat
+      traefik.http.routers.qdirstat-local-insecure.middlewares: qdirstat-web-redirect
+      traefik.http.routers.qdirstat-local.rule: Host(`qdirstat.${LOCAL_DOMAIN}`)
+      traefik.http.routers.qdirstat-local.entrypoints: websecure
+      traefik.http.routers.qdirstat-local.service: qdirstat
+      traefik.http.routers.qdirstat-local.tls: true
+      runtipi.managed: true
+ 
+```
