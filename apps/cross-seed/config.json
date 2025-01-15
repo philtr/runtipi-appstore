@@ -4,11 +4,12 @@
   "port": 2468,
   "available": true,
   "exposable": false,
+  "dynamic_config": true,
   "no_gui": true,
   "uid": 1000,
   "gid": 1000,
   "id": "cross-seed",
-  "tipi_version": 31,
+  "tipi_version": 32,
   "version": "6.8.7",
   "categories": ["media", "utilities"],
   "description": "An app designed to help you download torrents that you can cross seed based on your existing torrents. It is designed to match conservatively to minimize manual intervention.",
@@ -19,5 +20,5 @@
   "form_fields": [],
   "supported_architectures": ["arm64", "amd64"],
   "created_at": 1691943801422,
-  "updated_at": 1736975545000
+  "updated_at": 1736983319873
 }

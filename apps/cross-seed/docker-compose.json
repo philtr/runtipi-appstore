@@ -1,0 +1,30 @@
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "cross-seed",
+      "image": "ghcr.io/cross-seed/cross-seed:6.8.7",
+      "isMain": true,
+      "user": "1000:1000",
+      "environment": {
+        "TZ": "${TZ}"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/config",
+          "containerPath": "/config"
+        },
+        {
+          "hostPath": "${ROOT_FOLDER_HOST}/app-data/transmission-vpn/data/config/transmission-home/torrents",
+          "containerPath": "/torrents",
+          "readOnly": true
+        },
+        {
+          "hostPath": "${ROOT_FOLDER_HOST}/media/torrents/watch",
+          "containerPath": "/cross-seeds"
+        }
+      ],
+      "command": "daemon"
+    }
+  ]
+}
