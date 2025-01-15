@@ -1,16 +1,66 @@
-# DuckDNS
+# Checklist
+## Dynamic compose for duckdns
+This is a duckdns update for using dynamic compose.
+##### Reaching the app :
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/config:/config
+##### Specific instructions :
+- [ ] 🌳 Environment
 
-[Duckdns](https://duckdns.org/) is a free service which will point a DNS (sub domains of duckdns.org) to an IP of your choice. The service is completely free, and doesn't require reactivation or forum posts to maintain its existence.
-
-## Application Setup
-
-- Go to the [duckdns website](https://duckdns.org/), register your subdomain(s) and retrieve your token
-- Create a container with your subdomain(s) and token. If you own user.duckdns.org, you put `SUBDOMAINS=user` you would NOT put a sub subdomain like overseerr from overseerr.user.ducksdns.org
-- It will update your IP with the DuckDNS service every 5 minutes (with a random jitter)
-
-## Notice regarding automatic detection
-
-Using the `UPDATE_IP` variable whatever its value (`ipv4`, `ipv6` or `both`) uses external _Cloudflare whoami_ service to detect public IP addresses.
-**Be aware that using this variable will query a third-party service other than DuckDNS.**
-
-Omitting the `UPDATE_IP` variable uses DuckDNS for detection and only supports IPv4.
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "duckdns",
+      "image": "lscr.io/linuxserver/duckdns:b14c520a-ls8",
+      "isMain": true,
+      "environment": {
+        "PUID": "1000",
+        "PGID": "1000",
+        "TZ": "${TZ}",
+        "SUBDOMAINS": "${DUCKDNS_SUBDOMAINS}",
+        "TOKEN": "${DUCKDNS_TOKEN}",
+        "UPDATE_IP": "${DUCKDNS_UPDATE_IP}",
+        "LOG_FILE": "${DUCKDNS_ENABLE_LOG_FILE}"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/config",
+          "containerPath": "/config"
+        }
+      ]
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.9'
+services:
+  duckdns:
+    container_name: duckdns
+    image: lscr.io/linuxserver/duckdns:b14c520a-ls8
+    environment:
+    - PUID=1000
+    - PGID=1000
+    - TZ=${TZ}
+    - SUBDOMAINS=${DUCKDNS_SUBDOMAINS}
+    - TOKEN=${DUCKDNS_TOKEN}
+    - UPDATE_IP=${DUCKDNS_UPDATE_IP}
+    - LOG_FILE=${DUCKDNS_ENABLE_LOG_FILE}
+    volumes:
+    - ${APP_DATA_DIR}/data/config:/config
+    restart: unless-stopped
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+ 
+```
