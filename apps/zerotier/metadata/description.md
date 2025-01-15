@@ -1,10 +1,64 @@
-## Securely Connect Any Device, Anywhere.
+# Checklist
+## Dynamic compose for zerotier
+This is a zerotier update for using dynamic compose.
+##### Reaching the app :
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Specific instructions :
+- [ ] 🩺 Healthcheck
+- [ ] ⌨ Command
+- [ ] 🌐 Network mode (host)
+- [ ] 📱 Devices
+- [ ] 🔓 Capacity add
 
-ZeroTier combines the capabilities of VPN and SD-WAN, simplifying network management.
-Connect team members from anywhere in the world on any device. ZeroTier creates secure networks between on-premise, cloud, desktop, and mobile devices.
-Emulates Layer 2 Ethernet with multipath, multicast, and bridging capabilities.
-ZeroTier’s zero-trust networking solution provides scalable security with 256-bit end-to-end encryption.
-
-Create a ZeroTier network at [https://my.zerotier.com/](https://my.zerotier.com/) and invite your team members to join. Once they accept the invitation, they will be able to access the network from any device, anywhere in the world.
-
-![zt](https://www.zerotier.com/wp-content/uploads/2020/08/ZT_NetworkGraphic_Homepage.png)
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "zerotier",
+      "image": "zerotier/zerotier:1.14.2",
+      "isMain": true,
+      "networkMode": "host",
+      "command": "${NETWORK_ID}",
+      "devices": [
+        "/dev/net/tun"
+      ],
+      "capAdd": [
+        "NET_ADMIN",
+        "SYS_ADMIN"
+      ],
+      "healthCheck": {
+        "test": "true"
+      }
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.7'
+services:
+  zerotier:
+    container_name: zerotier
+    image: zerotier/zerotier:1.14.2
+    restart: on-failure
+    command: ${NETWORK_ID}
+    cap_add:
+    - NET_ADMIN
+    - SYS_ADMIN
+    devices:
+    - /dev/net/tun
+    healthcheck:
+      test:
+      - CMD
+      - 'true'
+    network_mode: host
+    labels:
+      runtipi.managed: true
+ 
+```
