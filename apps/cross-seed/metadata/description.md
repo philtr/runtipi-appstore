@@ -1,22 +1,73 @@
-# cross-seed: Fully-automatic, no false positives
+# Checklist
+## Dynamic compose for cross-seed
+This is a cross-seed update for using dynamic compose.
+##### Reaching the app :
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/config:/config
+- [ ] ${ROOT_FOLDER_HOST}/app-data/transmission-vpn/data/config/transmission-home/torrents:/torrents:ro
+- [ ] ${ROOT_FOLDER_HOST}/media/torrents/watch:/cross-seeds
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 👤 User (1000:1000)
+- [ ] ⌨ Command
 
-`cross-seed` is an app designed to help you download torrents that you can cross seed based on your existing torrents. It is designed to match conservatively to minimize manual intervention.
-
-`cross-seed` can inject the torrents it finds directly into your torrent client.
-Currently, the supported clients are
-
--   rTorrent
--   qBittorrent
--   Transmission
--   Deluge
-
-If your client isn't supported, `cross-seed` will download a bunch of torrent files to a folder you specify.
-After that, I recommend using [AutoTorrent2](https://github.com/JohnDoee/autotorrent2) to do the last-mile delivery into your client.
-
-## Tutorial
-
-Head on over to [cross-seed.org](https://www.cross-seed.org/docs/basics/getting-started) to get started.
-
-## Troubleshooting
-
-Feel free to [start a discussion](https://github.com/cross-seed/cross-seed/discussions/new), or reach out on [Discord](https://discord.gg/jpbUFzS5Wb).
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "cross-seed",
+      "image": "ghcr.io/cross-seed/cross-seed:6.8.7",
+      "isMain": true,
+      "user": "1000:1000",
+      "environment": {
+        "TZ": "${TZ}"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/config",
+          "containerPath": "/config"
+        },
+        {
+          "hostPath": "${ROOT_FOLDER_HOST}/app-data/transmission-vpn/data/config/transmission-home/torrents",
+          "containerPath": "/torrents",
+          "readOnly": true
+        },
+        {
+          "hostPath": "${ROOT_FOLDER_HOST}/media/torrents/watch",
+          "containerPath": "/cross-seeds"
+        }
+      ],
+      "command": "daemon"
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+services:
+  cross-seed:
+    container_name: cross-seed
+    image: ghcr.io/cross-seed/cross-seed:6.8.7
+    user: 1000:1000
+    restart: unless-stopped
+    command: daemon
+    environment:
+    - TZ=${TZ}
+    volumes:
+    - ${APP_DATA_DIR}/data/config:/config
+    - ${ROOT_FOLDER_HOST}/app-data/transmission-vpn/data/config/transmission-home/torrents:/torrents:ro
+    - ${ROOT_FOLDER_HOST}/media/torrents/watch:/cross-seeds
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: false
+      runtipi.managed: true
+ 
+```
