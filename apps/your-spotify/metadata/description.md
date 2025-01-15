@@ -1,19 +1,142 @@
-## Your Spotify
+# Checklist
+## Dynamic compose for your-spotify
+This is a your-spotify update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://your-spotify.tipi.local
+- [ ] 🌐 Additionnal Port(s)
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/db:/data/db
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] 🔗 Depends on
+- 🏷 DNS (skipped)
 
-YourSpotify is a self-hosted application that tracks what you listen and offers you a dashboard to explore statistics about it! It's composed of a web server which polls the Spotify API every now and then and a web application on which you can explore your statistics.
-
-![Screenshots](https://user-images.githubusercontent.com/17204739/154752226-c2215a51-e20e-4ade-ac63-42c5abb25240.png)
-
-### Creating the Spotify Application
-
-For **YourSpotify** to work you need to provide a Spotify application **public** AND **secret** to the server environment.
-To do so, you need to create a **Spotify application** [here](https://developer.spotify.com/dashboard/applications).
-
-1. Click on **Create a client ID**.
-2. Fill out all the informations.
-3. Copy the **public** and the **secret** key respectively.
-4. Add an authorized redirect URI corresponding to your **server** location on the internet adding the suffix **/oauth/spotify/callback**.
-   1. use the `EDIT SETTINGS` button on the top right corner of the page.
-   2. add your URI under the `Redirect URIs` section.
-   - i.e: `http://localhost:8080/oauth/spotify/callback` or `http://home.mydomain.com/your_spotify_backend/oauth/spotify/callback`
-   3. Do not forget to hit the save button at the bottom of the popup.
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "your-spotify",
+      "image": "yooooomi/your_spotify_client:1.12.0",
+      "isMain": true,
+      "internalPort": 3000,
+      "environment": {
+        "API_ENDPOINT": "http://${INTERNAL_IP}:32500"
+      },
+      "dependsOn": [
+        "your-spotify-server"
+      ]
+    },
+    {
+      "name": "your-spotify-server",
+      "image": "yooooomi/your_spotify_server",
+      "addPorts": [
+        {
+          "hostPort": 32500,
+          "containerPort": 8080
+        }
+      ],
+      "environment": {
+        "API_ENDPOINT": "http://${INTERNAL_IP}:32500",
+        "CLIENT_ENDPOINT": "http://${INTERNAL_IP}:${APP_PORT}",
+        "SPOTIFY_PUBLIC": "${SPOTIFY_PUBLIC}",
+        "SPOTIFY_SECRET": "${SPOTIFY_SECRET}",
+        "MONGO_ENDPOINT": "mongodb://your-spotify-db:27017/your_spotify",
+        "CORS": "all"
+      },
+      "dependsOn": [
+        "your-spotify-db"
+      ]
+    },
+    {
+      "name": "your-spotify-db",
+      "image": "mongo:4.4.8",
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/db",
+          "containerPath": "/data/db"
+        }
+      ]
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3'
+services:
+  your-spotify:
+    container_name: your-spotify
+    image: yooooomi/your_spotify_client:1.12.0
+    depends_on:
+    - your-spotify-server
+    restart: unless-stopped
+    ports:
+    - ${APP_PORT}:3000
+    environment:
+    - API_ENDPOINT=http://${INTERNAL_IP}:32500
+    networks:
+    - tipi_main_network
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.your-spotify-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.your-spotify.loadbalancer.server.port: 3000
+      traefik.http.routers.your-spotify-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.your-spotify-insecure.entrypoints: web
+      traefik.http.routers.your-spotify-insecure.service: your-spotify
+      traefik.http.routers.your-spotify-insecure.middlewares: your-spotify-web-redirect
+      traefik.http.routers.your-spotify.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.your-spotify.entrypoints: websecure
+      traefik.http.routers.your-spotify.service: your-spotify
+      traefik.http.routers.your-spotify.tls.certresolver: myresolver
+      traefik.http.routers.your-spotify-local-insecure.rule: Host(`your-spotify.${LOCAL_DOMAIN}`)
+      traefik.http.routers.your-spotify-local-insecure.entrypoints: web
+      traefik.http.routers.your-spotify-local-insecure.service: your-spotify
+      traefik.http.routers.your-spotify-local-insecure.middlewares: your-spotify-web-redirect
+      traefik.http.routers.your-spotify-local.rule: Host(`your-spotify.${LOCAL_DOMAIN}`)
+      traefik.http.routers.your-spotify-local.entrypoints: websecure
+      traefik.http.routers.your-spotify-local.service: your-spotify
+      traefik.http.routers.your-spotify-local.tls: true
+      runtipi.managed: true
+  your-spotify-server:
+    container_name: your-spotify-server
+    image: yooooomi/your_spotify_server
+    restart: unless-stopped
+    dns:
+    - ${DNS_IP}
+    ports:
+    - 32500:8080
+    links:
+    - your-spotify-db
+    depends_on:
+    - your-spotify-db
+    environment:
+    - API_ENDPOINT=http://${INTERNAL_IP}:32500
+    - CLIENT_ENDPOINT=http://${INTERNAL_IP}:${APP_PORT}
+    - SPOTIFY_PUBLIC=${SPOTIFY_PUBLIC}
+    - SPOTIFY_SECRET=${SPOTIFY_SECRET}
+    - MONGO_ENDPOINT=mongodb://your-spotify-db:27017/your_spotify
+    - CORS=all
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+  your-spotify-db:
+    container_name: your-spotify-db
+    image: mongo:4.4.8
+    restart: unless-stopped
+    volumes:
+    - ${APP_DATA_DIR}/data/db:/data/db
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+ 
+```
