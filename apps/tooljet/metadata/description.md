@@ -1,26 +1,159 @@
-## Installation Notes ##
+# Checklist
+## Dynamic compose for tooljet
+This is a tooljet update for using dynamic compose.
+##### Reaching the app :
+- [ ] http://localip:port
+- [ ] https://tooljet.tipi.local
+##### In app tests :
+- [ ] 📝 Register and log in
+- [ ] 🖱 Basic interaction
+- [ ] 🌆 Uploading data
+- [ ] 🔄 Check data after restart
+##### Volumes mapping :
+- [ ] ${APP_DATA_DIR}/data/db:/var/lib/postgresql/data
+##### Specific instructions :
+- [ ] 🌳 Environment
+- [ ] ⌨ Command
+- [ ] 🔗 Depends on
+- [ ] 🔤 TTY (True)
+- [ ] 🤖 Stdin open
 
-You will need to enable the "expose app" option and configure a URL in Tipi to use Tooljet. This setting can be changed at a later date if an integration is identified that needs it.
-
-## Easily build internal tools. 
-
-Visual app builder: 40+ built-in responsive widgets such as Tables, Charts, Lists, Forms, Progressbars, and more.
-ToolJet Database: In-built no-code database.
-Multi-Page: Build an application with as many pages as you want.
-Multiplayer editing: multiple users can use the app builder at the same time.
-40+ data sources: connect to external databases, cloud storages and APIs.
-Desktop & mobile: layout widths can be customised to support different screens.
-Self-host: (supports Docker, Kubernetes, Heroku, AWS EC2, Google Cloud Run, and more).
-Collaborate: add comments anywhere on the canvas and tag your team members.
-Extend with plugins: use our commandline tool to easily bootstrap new connectors.
-Version control: every application have different versions with proper release cycle.
-Run JS & Python code: ability custom JavaScript & Python snippets
-Granular access control on group-level and app-level.
-Low-code: write JS code almost anywhere in the builder. For example, the color property of text can be set to status === 'success' ? 'green' : 'red'
-No-code query editors: for all supported data sources.
-Join and transform data: transform query results using just JavaScript/Python code.
-Secure: All the credentials are securely encrypted using aes-256-gcm.
-Doesn't store data: ToolJet acts only as a proxy and doesn't store any data.
-SSO: Supports multiple SSO providers
-
-![Screenshot](https://user-images.githubusercontent.com/7828962/211444352-4d6d2e4a-13c9-4980-9e16-4aed4af9811b.png)
+# New JSON
+```json
+{
+  "$schema": "../dynamic-compose-schema.json",
+  "services": [
+    {
+      "name": "tooljet",
+      "image": "tooljet/tooljet-client-ce:v2.4.2",
+      "isMain": true,
+      "internalPort": 80,
+      "environment": {
+        "SERVER_HOST": "tooljet-server"
+      },
+      "dependsOn": [
+        "tooljet-server"
+      ],
+      "command": "openresty -g \"daemon off;\"",
+      "tty": true,
+      "stdinOpen": true
+    },
+    {
+      "name": "tooljet-server",
+      "image": "tooljet/tooljet-server-ce:v2.24.0",
+      "environment": {
+        "SERVE_CLIENT": "false",
+        "SERVER_HOST": "tooljet-server",
+        "TOOLJET_HOST": "https://${APP_DOMAIN}",
+        "LOCKBOX_MASTER_KEY": "${LOCKBOX_MASTER_KEY}",
+        "SECRET_KEY_BASE": "${SECRET_KEY_BASE}",
+        "PG_DB": "tooljet",
+        "PG_USER": "tooljet",
+        "PG_HOST": "db-tooljet",
+        "PG_PASS": "${DB_PASSWORD}",
+        "CHECK_FOR_UPDATES": "check_if_updates_are_available",
+        "DEFAULT_FROM_EMAIL": "hello@tooljet.io"
+      },
+      "command": "npm run start:prod",
+      "tty": true,
+      "stdinOpen": true
+    },
+    {
+      "name": "db-tooljet",
+      "image": "postgres:11",
+      "environment": {
+        "POSTGRES_USER": "tooljet",
+        "POSTGRES_PASSWORD": "${DB_PASSWORD}",
+        "POSTGRES_DB": "tooljet",
+        "PGDATA": "/data/postgres"
+      },
+      "volumes": [
+        {
+          "hostPath": "${APP_DATA_DIR}/data/db",
+          "containerPath": "/var/lib/postgresql/data"
+        }
+      ]
+    }
+  ]
+} 
+```
+# Original YAML
+```yaml
+version: '3.7'
+services:
+  tooljet:
+    container_name: tooljet
+    tty: true
+    stdin_open: true
+    image: tooljet/tooljet-client-ce:v2.4.2
+    restart: always
+    ports:
+    - ${APP_PORT}:80
+    depends_on:
+    - tooljet-server
+    networks:
+    - tipi_main_network
+    environment:
+    - SERVER_HOST=tooljet-server
+    labels:
+      traefik.enable: true
+      traefik.http.middlewares.tooljet-web-redirect.redirectscheme.scheme: https
+      traefik.http.services.tooljet.loadbalancer.server.port: 80
+      traefik.http.routers.tooljet-insecure.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.tooljet-insecure.entrypoints: web
+      traefik.http.routers.tooljet-insecure.service: tooljet
+      traefik.http.routers.tooljet-insecure.middlewares: tooljet-web-redirect
+      traefik.http.routers.tooljet.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.tooljet.entrypoints: websecure
+      traefik.http.routers.tooljet.service: tooljet
+      traefik.http.routers.tooljet.tls.certresolver: myresolver
+      traefik.http.routers.tooljet-local-insecure.rule: Host(`tooljet.${LOCAL_DOMAIN}`)
+      traefik.http.routers.tooljet-local-insecure.entrypoints: web
+      traefik.http.routers.tooljet-local-insecure.service: tooljet
+      traefik.http.routers.tooljet-local-insecure.middlewares: tooljet-web-redirect
+      traefik.http.routers.tooljet-local.rule: Host(`tooljet.${LOCAL_DOMAIN}`)
+      traefik.http.routers.tooljet-local.entrypoints: websecure
+      traefik.http.routers.tooljet-local.service: tooljet
+      traefik.http.routers.tooljet-local.tls: true
+      runtipi.managed: true
+    command: openresty -g "daemon off;"
+  tooljet-server:
+    container_name: tooljet-server
+    image: tooljet/tooljet-server-ce:v2.24.0
+    tty: true
+    stdin_open: true
+    restart: always
+    networks:
+    - tipi_main_network
+    environment:
+    - SERVE_CLIENT=false
+    - SERVER_HOST=tooljet-server
+    - TOOLJET_HOST=https://${APP_DOMAIN}
+    - LOCKBOX_MASTER_KEY=${LOCKBOX_MASTER_KEY}
+    - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+    - PG_DB=tooljet
+    - PG_USER=tooljet
+    - PG_HOST=db-tooljet
+    - PG_PASS=${DB_PASSWORD}
+    - CHECK_FOR_UPDATES=check_if_updates_are_available
+    - DEFAULT_FROM_EMAIL=hello@tooljet.io
+    command: npm run start:prod
+    labels:
+      runtipi.managed: true
+  db-tooljet:
+    container_name: db-tooljet
+    image: postgres:11
+    restart: on-failure
+    volumes:
+    - ${APP_DATA_DIR}/data/db:/var/lib/postgresql/data
+    environment:
+    - POSTGRES_USER=tooljet
+    - POSTGRES_PASSWORD=${DB_PASSWORD}
+    - POSTGRES_DB=tooljet
+    - PGDATA=/data/postgres
+    networks:
+    - tipi_main_network
+    labels:
+      runtipi.managed: true
+ 
+```
