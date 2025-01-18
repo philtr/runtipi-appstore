@@ -12,7 +12,7 @@
         "DATABASE_URL": "postgresql://postgres@postgres/planka",
         "SECRET_KEY": "${PLANKA_SECRET_KEY}"
       },
-      "dependsOn": ["postgres"],
+      "dependsOn": ["planka-db"],
       "volumes": [
         {
           "hostPath": "${APP_DATA_DIR}/data/user-avatars",
@@ -30,7 +30,7 @@
       "command": "bash -c \"for i in `seq 1 30`; do ./start.sh && s=$$? && break || s=$$?; echo wait; sleep 5; done; (exit $$s)\""
     },
     {
-      "name": "postgres",
+      "name": "planka-db",
       "image": "postgres:14-alpine",
       "environment": {
         "POSTGRES_DB": "planka",
