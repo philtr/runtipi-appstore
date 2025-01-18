@@ -35,6 +35,7 @@
           "containerPath": "/app/private/attachments"
         }
       ],
+      "command": "./start.sh"
     },
     {
       "name": "planka-db",
