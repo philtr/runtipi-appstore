@@ -16,7 +16,7 @@
   "website": "https://docs.planka.cloud/",
   "form_fields": [
     {
-      "type": "text",
+      "type": "email",
       "label": "Admin Email",
       "max": 50,
       "min": 3,
