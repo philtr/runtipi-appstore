@@ -27,7 +27,7 @@
           "containerPath": "/app/private/attachments"
         }
       ],
-      "command": "bash -c \"for i in `seq 1 30`; do ./start.sh && s=$$? && break || s=$$?; echo \"Tried $$i times. Waiting 5 seconds...\"; sleep 5; done; (exit $$s)\""
+      "command": "bash -c \"for i in `seq 1 30`; do ./start.sh && s=$$? && break || s=$$?; echo wait; sleep 5; done; (exit $$s)\""
     },
     {
       "name": "postgres",
